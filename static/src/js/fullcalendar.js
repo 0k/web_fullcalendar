@@ -231,6 +231,7 @@ openerp.web_fullcalendar = function(instance) {
          * Transform OpenERP event object to fullcalendar event object
          */
         event_data_transform: function(evt) {
+            var self = this;
             var date_start = instance.web.auto_str_to_date(evt[this.date_start]),
                 date_stop = this.date_stop ? instance.web.auto_str_to_date(evt[this.date_stop]) : null,
                 date_delay = evt[this.date_delay] || 1.0,
@@ -241,10 +242,17 @@ openerp.web_fullcalendar = function(instance) {
             }
 
             if (this.info_fields) {
-                res_text = _.map(this.info_fields, function(fld) {
-                    if(evt[fld] instanceof Array)
-                        return evt[fld][1];
-                    return evt[fld];
+                res_text = _.reject(_.map(this.info_fields, function(fieldname) {
+                    var value = evt[fieldname];
+                    if (_.contains(["one2many", "many2one", "one2one", "many2many"],
+                                   self.fields[fieldname].type)) {
+                        if (value === false) return null;
+                    }
+                    if(value instanceof Array)
+                        return value[1];
+                    return value;
+                }), function (x) {
+                    return x === null;
                 });
             }
             if (!date_stop && date_delay) {
