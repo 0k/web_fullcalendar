@@ -75,7 +75,6 @@ openerp.web_fullcalendar = function(instance) {
         },
 
         view_loading: function (data) {
-            debugger;
             this.fields_view = data;
             this.$el.addClass(this.fields_view.arch.attrs['class']);
             this.$calendar = this.$el; // .find(".oe_calendar");
@@ -171,7 +170,6 @@ openerp.web_fullcalendar = function(instance) {
                 select: function (start_date, end_date, all_day, _js_event, _view) {
                     var title = prompt('Event Title:');
                     if (title) {
-                        debugger;
                         self.quick_create({
                             title: title,
                             start: start_date,
@@ -249,7 +247,6 @@ openerp.web_fullcalendar = function(instance) {
             if (!date_stop && date_delay) {
                 date_stop = date_start.clone().addHours(date_delay);
             }
-            debugger;
             var r = {
                 'start': date_start.toString('yyyy-MM-dd HH:mm:ss'),
                 'end': date_stop.toString('yyyy-MM-dd HH:mm:ss'),
@@ -359,9 +356,8 @@ openerp.web_fullcalendar = function(instance) {
         },
         slow_create: function(event_data) {
             var self = this;
-            debugger;
             var defaults = {};
-            _.each(this.get_event_data(event_obj), function(val, field_name) {
+            _.each(this.get_event_data(event_data), function(val, field_name) {
                 defaults['default_' + field_name] = val;
             });
             var something_saved = false;
@@ -370,9 +366,8 @@ openerp.web_fullcalendar = function(instance) {
                 title: _t("Create: ") + ' ' + this.name,
                 disable_multiple_selection: true,
             });
-            pop.on('closed', self, function() {
-                debugger;
-            });
+            // pop.on('closed', self, function() {
+            // });
             pop.on('create_completed', self, function(id) {
                 something_saved = true;
                 self.dataset.ids.push(id);
@@ -380,16 +375,10 @@ openerp.web_fullcalendar = function(instance) {
             });
         },
         open_event: function(id) {
-            var self = this;
             var index = this.dataset.get_id_index(id);
-            var pop = new instance.web.form.FormOpenPopup(this);
-            var id_from_dataset = this.dataset.ids[index];
-            pop.show_element(this.dataset.model, id_from_dataset, this.dataset.get_context(), {
-                title: _t("Edit: ") + this.name
-            });
-            pop.on('write_completed', self, function() {
-                self.refresh_event(id);
-            });
+            this.dataset.index = index;
+            this.do_switch_view('form');
+            return false;
         },
     });
 
