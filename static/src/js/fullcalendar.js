@@ -149,6 +149,9 @@ openerp.web_fullcalendar = function(instance) {
 
             this.$calendar.fullCalendar($.extend({
 
+                defaultView: (this.mode == "month")?"month":
+                    (this.mode == "week"?"agendaWeek":
+                     (this.mode == "day"?"agendaDay":"month")),
                 header: {
                     left: 'prev,next today',
                     center: 'title',
