@@ -264,7 +264,7 @@ openerp.web_fullcalendar = function(instance) {
                 'title': res_text.join(', '),
                 // check this with recurring data !
                 'allDay': (this.fields[this.date_start].type == 'date' ||
-                           (this.all_day && evt[this.all_day])),
+                           (this.all_day && evt[this.all_day]) || false),
                 'id': evt.id,
             };
             if (evt.color) {
