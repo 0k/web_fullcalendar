@@ -1,0 +1,5 @@
+<template>
+  <t t-name="FullCalendarView">
+    <div class="oe_calendar" />
+  </t>
+</template>
