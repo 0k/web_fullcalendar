@@ -332,13 +332,9 @@ openerp.web_fullcalendar = function(instance) {
             return domain;
         },
 
-        do_show: function () {
-            var self = this;
-            $.when(this.ready).done(function() {
-                self.$el.show();
-                self.do_push_state({});
-            });
-        },
+        // do_show: function () {
+        //     this.$el.show();
+        // },
 
         quick_save: function(event_obj) {
             var self = this;
