@@ -304,27 +304,23 @@ openerp.web_fullcalendar = function(instance) {
         },
         do_search: function(domain, context, _group_by) {
             var self = this;
-            $.when(this.ready).done(function() {
-                if (typeof self.event_source !== "undefined")
-                    self.$calendar.removeEventSource(self.event_source);
-                self.event_source = {
-                    events: function(start, end, callback) {
-                        self.dataset.read_slice(_.keys(self.fields), {
-                            offset: 0,
-                            domain: self.get_range_domain(domain, start, end),
-                            context: context,
-                        }).done(function(events) {
-                            return callback(events);
-                        });
-                    },
-                    eventDataTransform: function (event) {
-                        return self.event_data_transform(event);
-                    },
-                };
-
-                self.$calendar.fullCalendar('addEventSource', self.event_source);
-            });
-
+            if (typeof this.event_source !== "undefined")
+                this.$calendar.fullCalendar('removeEventSource', this.event_source);
+            this.event_source = {
+                events: function(start, end, callback) {
+                    self.dataset.read_slice(_.keys(self.fields), {
+                        offset: 0,
+                        domain: self.get_range_domain(domain.slice(0), start, end),
+                        context: context,
+                    }).done(function(events) {
+                        return callback(events);
+                    });
+                },
+                eventDataTransform: function (event) {
+                    return self.event_data_transform(event);
+                },
+            };
+            this.$calendar.fullCalendar('addEventSource', this.event_source);
         },
         /**
          * Build OpenERP Domain to filter object by this.date_start field
