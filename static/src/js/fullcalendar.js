@@ -74,6 +74,11 @@ openerp.web_fullcalendar = function(instance) {
             this.selected_filters = [];
         },
 
+        destroy: function() {
+            this.$calendar.fullCalendar('destroy' );
+            this._super();
+        },
+
         view_loading: function (data) {
             this.fields_view = data;
             this.$el.addClass(this.fields_view.arch.attrs['class']);
