@@ -240,6 +240,7 @@ openerp.web_fullcalendar = function(instance) {
             var date_start = instance.web.auto_str_to_date(evt[this.date_start]),
                 date_stop = this.date_stop ? instance.web.auto_str_to_date(evt[this.date_stop]) : null,
                 date_delay = evt[this.date_delay] || 1.0,
+                all_day = this.all_day ? evt[this.all_day] : false,
                 res_text = '';
 
             if (this.date_stop && this.fields[this.date_stop].type == 'date') {
@@ -262,6 +263,9 @@ openerp.web_fullcalendar = function(instance) {
             }
             if (!date_stop && date_delay) {
                 date_stop = date_start.clone().addHours(date_delay);
+            }
+            if (this.fields[this.date_start].type != "date" && all_day) {
+                date_stop.addDays(-1);
             }
             var r = {
                 'start': date_start.toString('yyyy-MM-dd HH:mm:ss'),
@@ -290,6 +294,11 @@ openerp.web_fullcalendar = function(instance) {
             };
             data[this.date_start] = instance.web.parse_value(event.start, this.fields[this.date_start]);
             if (this.date_stop) {
+                // fullcalendar will give event.end == event.start in case of all_day. OpenERP does
+                // await a real stop the next day, and a real duration of 24 hours
+                if (event.allDay) {
+                    event.end.addDays(1);
+                }
                 data[this.date_stop] = instance.web.parse_value(event.end, this.fields[this.date_stop]);
             }
             if (this.all_day) {
