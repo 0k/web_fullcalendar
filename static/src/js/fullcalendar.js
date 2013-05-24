@@ -217,7 +217,11 @@ openerp.web_fullcalendar = function(instance) {
                     });
                     self.$calendar.fullCalendar('updateEvent', event_obj);
                 } else { // New event object to create
-                    self.$calendar.fullCalendar('renderEvent', new_event, true);
+                    self.$calendar.fullCalendar('renderEvent', new_event);
+                    // By forcing attribution of this event to this source, we
+                    // make sure that the event will be removed when the source
+                    // will be removed (which occurs at each do_search)
+                    self.$calendar.fullCalendar('clientEvents', id)[0].source = self.event_source;
                 }
             });
         },
