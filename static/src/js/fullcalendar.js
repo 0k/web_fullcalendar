@@ -1,4 +1,4 @@
-/*globals: openerp,$ */
+/*globals: openerp, $, console */
 
 /*---------------------------------------------------------
  * OpenERP web_calendar
@@ -44,6 +44,10 @@ openerp.web_fullcalendar = function(instance) {
         // }
 
     };
+
+    function is_virtual_id(id) {
+        return typeof id == "string" && id.indexOf('-') >= 0;
+    }
 
     instance.web.views.add('calendar', 'instance.web_fullcalendar.FullCalendarView');
 
@@ -203,8 +207,12 @@ openerp.web_fullcalendar = function(instance) {
          */
         refresh_event: function(id) {
             var self = this;
-            // XXXvlab: we needed to use parseInt, but how will this work with recurring events ?
-            this.dataset.read_ids([parseInt(id)], _.keys(this.fields)).done(function (record) {
+            if (is_virtual_id(id))
+                // Should avoid "refreshing" a virtual ID because it can't
+                // really be modified so it should never be refreshed. As upon
+                // edition, a NEW event with a non-virtual id will be created.
+                console.warn("Unwise use of refresh_event on a virtual ID.");
+            this.dataset.read_ids([id], _.keys(this.fields)).done(function (record) {
                 // Event boundaries were already changed by fullcalendar, but we need to reload them:
                 var new_event = self.event_data_transform(record[0]);
                 // fetch event_obj
@@ -293,24 +301,30 @@ openerp.web_fullcalendar = function(instance) {
          * Transform fullcalendar event object to OpenERP Data object
          */
         get_event_data: function(event) {
+
+            // Normalize event_end without changing fullcalendars event.
+            var event_end = event.end;
+            if (event.allDay) {
+                // Sometimes fullcalendar doesn't give any event.end.
+                if (event_end === null)
+                    event_end = event.start;
+                // Avoid inplace changes
+                event_end = (new Date(event_end.getTime())).addDays(1);
+            }
+
             var data = {
                 name: event.title
             };
             data[this.date_start] = instance.web.parse_value(event.start, this.fields[this.date_start]);
             if (this.date_stop) {
-                // fullcalendar will give event.end == event.start in case of all_day. OpenERP does
-                // await a real stop the next day, and a real duration of 24 hours
-                if (event.allDay) {
-                    event.end.addDays(1);
-                }
-                data[this.date_stop] = instance.web.parse_value(event.end, this.fields[this.date_stop]);
+                data[this.date_stop] = instance.web.parse_value(event_end, this.fields[this.date_stop]);
             }
             if (this.all_day) {
                 data[this.all_day] = event.allDay;
             }
             if (this.date_delay) {
                 // XXXvlab: what if different dates ?
-                var diff_seconds = Math.round((event.end.getTime() - event.start.getTime()) / 1000);
+                var diff_seconds = Math.round((event_end.getTime() - event.start.getTime()) / 1000);
                 data[this.date_delay] = diff_seconds / 3600;
             }
             return data;
@@ -357,8 +371,15 @@ openerp.web_fullcalendar = function(instance) {
             var index = this.dataset.get_id_index(event_obj._id);
             if (index !== null) {
                 event_id = this.dataset.ids[index];
-                this.dataset.write(event_id, data, {}).done(function() {
-                    self.refresh_event(event_id);
+                this.dataset.write(event_id, data, {}).done(function(id) {
+                    if (is_virtual_id(event_id)) {
+                        // this is a virtual ID and so this will create a new event
+                        // with an unknown id for us.
+                        self.$el.fullCalendar('refetchEvents');
+                    } else {
+                        // classical event that we can refresh
+                        self.refresh_event(event_id);
+                    }
                 });
             }
             return false;
