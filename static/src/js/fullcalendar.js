@@ -79,36 +79,39 @@ openerp.web_fullcalendar = function(instance) {
         },
 
         destroy: function() {
-            this.$calendar.fullCalendar('destroy' );
+            this.$calendar.fullCalendar('destroy');
             this._super();
         },
 
-        view_loading: function (data) {
-            this.fields_view = data;
-            this.$el.addClass(this.fields_view.arch.attrs['class']);
-            this.$calendar = this.$el; // .find(".oe_calendar");
+        view_loading: function (fv) {
+            this.fields_view = fv;
+            this.$calendar = this.$el;
 
-            this.ids = this.dataset.ids;
-            this.color_values = [];
             this.info_fields = [];
 
             /* xml view calendar options */
 
-            this.name = this.fields_view.name || this.fields_view.arch.attrs.string;
-            this.view_id = this.fields_view.view_id;
+            var attrs = fv.arch.attrs;
 
-            // mode, one of month, week or day
-            this.mode = this.fields_view.arch.attrs.mode;
+            if (!attrs.date_start) {
+                throw new Error(_t("Calendar view has not defined 'date_start' attribute."));
+            }
 
-            // date_start is mandatory, date_delay and date_stop are optional
-            this.date_start = this.fields_view.arch.attrs.date_start; // Field name of starting date field
-            this.date_delay = this.fields_view.arch.attrs.date_delay;
-            this.date_stop = this.fields_view.arch.attrs.date_stop;
-            this.all_day = this.fields_view.arch.attrs.all_day;
+            this.$el.addClass(attrs['class']);
 
-            this.color_field = this.fields_view.arch.attrs.color;
-            this.color_string = this.fields_view.fields[this.color_field] ?
-                this.fields_view.fields[this.color_field].string : _t("Filter");
+            this.name = fv.name || attrs.string;
+            this.view_id = fv.view_id;
+
+
+            this.mode = attrs.mode;              // one of month, week or day
+            this.date_start = attrs.date_start;  // Field name of starting date field
+            this.date_delay = attrs.date_delay;  // duration
+            this.date_stop = attrs.date_stop;
+            this.all_day = attrs.all_day;        // boolean
+
+            this.color_field = attrs.color;
+            this.color_string = fv.fields[this.color_field] ?
+                fv.fields[this.color_field].string : _t("Filter");
 
             if (this.color_field && this.selected_filters.length === 0) {
                 var default_filter;
@@ -116,19 +119,16 @@ openerp.web_fullcalendar = function(instance) {
                     this.selected_filters.push(default_filter + '');
                 }
             }
-            this.fields =  this.fields_view.fields;
+            this.fields = fv.fields;
 
-            if (!this.date_start) {
-                throw new Error(_t("Calendar view has not defined 'date_start' attribute."));
-            }
 
-            for (var fld = 0; fld < this.fields_view.arch.children.length; fld++) {
-                this.info_fields.push(this.fields_view.arch.children[fld].attrs.name);
+            for (var fld = 0; fld < fv.arch.children.length; fld++) {
+                this.info_fields.push(fv.arch.children[fld].attrs.name);
             }
 
             this.init_fullcalendar();
 
-            this.trigger('calendar_view_loaded', data);
+            this.trigger('calendar_view_loaded', fv);
             return this.ready.resolve();
         },
 
