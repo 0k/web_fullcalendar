@@ -162,9 +162,9 @@ openerp.web_fullcalendar = function(instance) {
                     center: 'title',
                     right: 'month,agendaWeek,agendaDay'
                 },
-                selectable: true,
+                selectable: !this.options.read_only_mode,
                 selectHelper: true,
-                editable: true,
+                editable: !this.options.read_only_mode,
 
                 // callbacks
 
