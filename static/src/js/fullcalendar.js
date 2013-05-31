@@ -337,7 +337,7 @@ openerp.web_fullcalendar = function(instance) {
                 events: function(start, end, callback) {
                     self.dataset.read_slice(_.keys(self.fields), {
                         offset: 0,
-                        domain: self.get_range_domain(domain.slice(0), start, end),
+                        domain: self.get_range_domain(domain, start, end),
                         context: context,
                     }).done(function(events) {
                         return callback(events);
@@ -355,6 +355,7 @@ openerp.web_fullcalendar = function(instance) {
          */
         get_range_domain: function(domain, start, end) {
             var format = instance.web.date_to_str;
+            domain = domain.slice(0);
             domain.unshift([this.date_start, '>=', format(start.clone())]);
             domain.unshift([this.date_start, '<=', format(end.clone())]);
             return domain;
