@@ -173,21 +173,25 @@ openerp.web_fullcalendar = function(instance) {
                 // callbacks
 
                 eventDrop: function (event, _day_delta, _minute_delta, _all_day, _revertFunc) {
-                    self.proxy('quick_save')(event); // we don't revert the event, but update it.
+                    var data = self.get_event_data(event);
+                    self.proxy('quick_save')(event._id, data); // we don't revert the event, but update it.
                 },
                 eventResize: function (event, _day_delta, _minute_delta, _revertFunc) {
-                    self.proxy('quick_save')(event);
+                    var data = self.get_event_data(event);
+                    self.proxy('quick_save')(event._id, data);
                 },
                 eventClick: function (event) { self.open_event(event._id); },
                 select: function (start_date, end_date, all_day, _js_event, _view) {
                     var title = prompt('Event Title:');
                     if (title) {
-                        self.quick_create({
+                        var data = self.get_event_data({
                             title: title,
                             start: start_date,
                             end: end_date,
                             allDay: all_day,
                         });
+
+                        self.quick_create(data);
                     }
                     self.$calendar.fullCalendar('unselect');
                 },
@@ -365,14 +369,13 @@ openerp.web_fullcalendar = function(instance) {
         //     this.$el.show();
         // },
 
-        quick_save: function(event_obj) {
+        quick_save: function(id, data) {
             var self = this;
-            var data = this.get_event_data(event_obj);
             delete(data.name); // Cannot modify actual name yet
-            var index = this.dataset.get_id_index(event_obj._id);
+            var index = this.dataset.get_id_index(id);
             if (index !== null) {
                 event_id = this.dataset.ids[index];
-                this.dataset.write(event_id, data, {}).done(function(id) {
+                this.dataset.write(event_id, data, {}).done(function() {
                     if (is_virtual_id(event_id)) {
                         // this is a virtual ID and so this will create a new event
                         // with an unknown id for us.
@@ -385,22 +388,21 @@ openerp.web_fullcalendar = function(instance) {
             }
             return false;
         },
-        quick_create: function(event_data) {
+        quick_create: function(data) {
             var self = this;
-            var data = this.get_event_data(event_data);
             this.dataset.create(data).done(function(id) {
                 self.dataset.ids.push(id);
                 self.refresh_event(id);
             }).fail(function(r, event) {
                 event.preventDefault();
                 // This will occurs if there are some more fields required
-                self.slow_create(event_data);
+                self.slow_create(data);
             });
         },
-        slow_create: function(event_data) {
+        slow_create: function(data) {
             var self = this;
             var defaults = {};
-            _.each(this.get_event_data(event_data), function(val, field_name) {
+            _.each(data, function(val, field_name) {
                 defaults['default_' + field_name] = val;
             });
             var something_saved = false;
