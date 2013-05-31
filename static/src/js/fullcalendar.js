@@ -80,14 +80,31 @@ openerp.web_fullcalendar = function(instance) {
 
         destroy: function() {
             this.$calendar.fullCalendar('destroy');
-            this._super();
+            this._super.apply(this, arguments);
         },
 
         view_loading: function (fv) {
+            var self = this;
+
             this.fields_view = fv;
-            this.$calendar = this.$el;
+
+            this.$calendar = this.$el.find(".oe_fullcalendar_widget");
 
             this.info_fields = [];
+
+            /* buttons */
+
+            this.$buttons = $(QWeb.render("CalendarView.buttons", {'widget': this}));
+            if (this.options.$buttons) {
+                this.$buttons.appendTo(this.options.$buttons);
+            } else {
+                this.$el.find('.oe_calendar_buttons').replaceWith(this.$buttons);
+            }
+
+            this.$buttons.on('click', 'button.oe_calendar_button_new', function () {
+                self.dataset.index = null;
+                self.do_switch_view('form');
+            });
 
             /* xml view calendar options */
 
@@ -358,7 +375,7 @@ openerp.web_fullcalendar = function(instance) {
                     if (is_virtual_id(event_id)) {
                         // this is a virtual ID and so this will create a new event
                         // with an unknown id for us.
-                        self.$el.fullCalendar('refetchEvents');
+                        self.$calendar.fullCalendar('refetchEvents');
                     } else {
                         // classical event that we can refresh
                         self.refresh_event(event_id);
@@ -404,6 +421,26 @@ openerp.web_fullcalendar = function(instance) {
             this.do_switch_view('form');
             return false;
         },
+
+        do_show: function() {
+            if (this.$buttons) {
+                this.$buttons.show();
+            }
+            this.do_push_state({});
+            return this._super();
+        },
+        do_hide: function () {
+            if (this.$buttons) {
+                this.$buttons.hide();
+            }
+            return this._super();
+        },
+        is_action_enabled: function(action) {
+            if (action === 'create' && !this.options.creatable)
+                return false;
+            return this._super(action);
+        },
+
     });
 
 };

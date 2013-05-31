@@ -1,5 +1,19 @@
 <template>
   <t t-name="FullCalendarView">
-    <div class="oe_calendar" />
+    <div class="oe_kanban_view">
+      <div class="oe_calendar_buttons"/>
+      <div class="oe_fullcalendar_widget" />
+    </div>
   </t>
+
+  <div t-name="CalendarView.buttons" class="oe_calendar_buttons">
+    <t t-if="widget.options.action_buttons !== false">
+      <t t-if="widget.is_action_enabled('create')">
+        <button type="button" class="oe_calendar_button_new oe_highlight">
+          <t t-esc="widget.options.create_text || _t('Create')"/>
+        </button>
+      </t>
+    </t>
+  </div>
+
 </template>
