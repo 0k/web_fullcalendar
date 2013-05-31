@@ -88,7 +88,6 @@ openerp.web_fullcalendar = function(instance) {
             this.$el.addClass(this.fields_view.arch.attrs['class']);
             this.$calendar = this.$el; // .find(".oe_calendar");
 
-            this.calendar_fields = {};
             this.ids = this.dataset.ids;
             this.color_values = [];
             this.info_fields = [];
@@ -107,11 +106,9 @@ openerp.web_fullcalendar = function(instance) {
             this.date_stop = this.fields_view.arch.attrs.date_stop;
             this.all_day = this.fields_view.arch.attrs.all_day;
 
-            this.day_length = this.fields_view.arch.attrs.day_length || 8;
             this.color_field = this.fields_view.arch.attrs.color;
             this.color_string = this.fields_view.fields[this.color_field] ?
                 this.fields_view.fields[this.color_field].string : _t("Filter");
-
 
             if (this.color_field && this.selected_filters.length === 0) {
                 var default_filter;
@@ -125,30 +122,12 @@ openerp.web_fullcalendar = function(instance) {
                 throw new Error(_t("Calendar view has not defined 'date_start' attribute."));
             }
 
-            /* Calendar Fields */
-
-            this.calendar_fields.date_start = {'name': this.date_start, 'kind': this.fields[this.date_start].type};
-
-            if (this.date_delay) {
-                if (this.fields[this.date_delay].type != 'float') {
-                    throw new Error(_t("Calendar view has a 'date_delay' type != float"));
-                }
-                this.calendar_fields.date_delay = {'name': this.date_delay, 'kind': this.fields[this.date_delay].type};
-            }
-            if (this.date_stop) {
-                this.calendar_fields.date_stop = {'name': this.date_stop, 'kind': this.fields[this.date_stop].type};
-            }
-
             for (var fld = 0; fld < this.fields_view.arch.children.length; fld++) {
                 this.info_fields.push(this.fields_view.arch.children[fld].attrs.name);
             }
 
             this.init_fullcalendar();
 
-            // XXXvlab: not very reliable as there are serious bugs in OpenERP sides.
-            // this.dataset.on('dataset_changed', this, function (id) {
-            //     this.reload_event_by_id(id);
-            // });
             this.trigger('calendar_view_loaded', data);
             return this.ready.resolve();
         },
