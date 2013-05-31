@@ -355,10 +355,10 @@ openerp.web_fullcalendar = function(instance) {
          */
         get_range_domain: function(domain, start, end) {
             var format = instance.web.date_to_str;
-            domain = domain.slice(0);
-            domain.unshift([this.date_start, '>=', format(start.clone())]);
-            domain.unshift([this.date_start, '<=', format(end.clone())]);
-            return domain;
+            return new instance.web.CompoundDomain(
+                domain,
+                [[this.date_start, '>=', format(start.clone())],
+                 [this.date_start, '<=', format(end.clone())]]);
         },
 
         // do_show: function () {
