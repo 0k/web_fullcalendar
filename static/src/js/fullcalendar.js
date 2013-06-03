@@ -143,10 +143,16 @@ openerp.web_fullcalendar = function(instance) {
                 this.info_fields.push(fv.arch.children[fld].attrs.name);
             }
 
-            this.init_fullcalendar();
+            return (new instance.web.Model(this.dataset.model))
+                .call("check_access_rights", ["create", false])
+                .then(function (create_right) {
+                    self.create_right = create_right;
+                    self.init_fullcalendar();
 
-            this.trigger('calendar_view_loaded', fv);
-            return this.ready.resolve();
+                    self.trigger('calendar_view_loaded', fv);
+                    self.ready.resolve();
+                });
+
         },
 
         init_fullcalendar: function() {
@@ -162,7 +168,7 @@ openerp.web_fullcalendar = function(instance) {
                     center: 'title',
                     right: 'month,agendaWeek,agendaDay'
                 },
-                selectable: !this.options.read_only_mode,
+                selectable: !this.options.read_only_mode && this.create_right,
                 selectHelper: true,
                 editable: !this.options.read_only_mode,
 
