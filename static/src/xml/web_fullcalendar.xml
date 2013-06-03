@@ -3,6 +3,7 @@
     <div class="oe_kanban_view">
       <div class="oe_calendar_buttons"/>
       <div class="oe_fullcalendar_widget" />
+      <div class="oe_calendar_qc_placeholder"/>
     </div>
   </t>
 
@@ -13,6 +14,16 @@
           <t t-esc="widget.options.create_text || _t('Create')"/>
         </button>
       </t>
+    </t>
+  </div>
+
+  <div t-name="CalendarView.quick_create" class="oe_calendar_quick_create">
+    <input/>
+    <t t-if="widget._buttons">
+      <div class="oe_calendar_quick_create_buttons">
+        <button class="oe_calendar_quick_create_add">Add</button>
+        or <a href="#" class="oe_calendar_quick_create_close">Cancel</a>
+      </div>
     </t>
   </div>
 

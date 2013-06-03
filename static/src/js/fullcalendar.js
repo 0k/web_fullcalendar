@@ -10,6 +10,10 @@ openerp.web_fullcalendar = function(instance) {
         _lt = instance.web._lt;
     var QWeb = instance.web.qweb;
 
+    function get_class(name) {
+        return new instance.web.Registry({'tmp' : name}).get_object("tmp");
+    }
+
     var defaultOptions = {
 
         /*
@@ -54,6 +58,7 @@ openerp.web_fullcalendar = function(instance) {
     instance.web_fullcalendar.FullCalendarView = instance.web.View.extend({
         template: "FullCalendarView",
         display_name: _lt('Calendar'),
+        quick_create_class: 'instance.web_calendar.QuickCreate',
 
         init: function (parent, dataset, view_id, options) {
             this._super(parent);
@@ -184,17 +189,35 @@ openerp.web_fullcalendar = function(instance) {
                 },
                 eventClick: function (event) { self.open_event(event._id); },
                 select: function (start_date, end_date, all_day, _js_event, _view) {
-                    var title = prompt('Event Title:');
-                    if (title) {
-                        var data = self.get_event_data({
-                            title: title,
-                            start: start_date,
-                            end: end_date,
-                            allDay: all_day,
-                        });
+                    var data = self.get_event_data({
+                        start: start_date,
+                        end: end_date,
+                        allDay: all_day,
+                    });
+                    delete data.title;
 
-                        self.quick_create(data);
+                    // Preparing context
+
+                    var ctx = {};
+                    _(data).each(function (value, key) {
+                        ctx['default_' + key] = value;
+                    });
+                    ctx = new instance.web.CompoundContext(
+                        self.dataset.get_context(), ctx);
+
+                    // Opening quick create widget
+
+                    if (self.quick) {
+                        return self.quick.trigger('close');
                     }
+                    self.quick = new (get_class(self.quick_create_class))(self, self.dataset, ctx, true)
+                        .on('added', self, self.proxy('quick_created'))
+                        .on('close', self, function() {
+                            this.quick.destroy();
+                            delete this.quick;
+                        });
+                    self.quick.replace($(".oe_calendar_qc_placeholder"));
+                    self.quick.focus();
                     self.$calendar.fullCalendar('unselect');
                 },
 
@@ -371,6 +394,9 @@ openerp.web_fullcalendar = function(instance) {
         //     this.$el.show();
         // },
 
+        /**
+         * Updates record identified by ``id`` with values in object ``data``
+         */
         quick_save: function(id, data) {
             var self = this;
             delete(data.name); // Cannot modify actual name yet
@@ -389,37 +415,6 @@ openerp.web_fullcalendar = function(instance) {
                 });
             }
             return false;
-        },
-        quick_create: function(data) {
-            var self = this;
-            this.dataset.create(data).done(function(id) {
-                self.dataset.ids.push(id);
-                self.refresh_event(id);
-            }).fail(function(r, event) {
-                event.preventDefault();
-                // This will occurs if there are some more fields required
-                self.slow_create(data);
-            });
-        },
-        slow_create: function(data) {
-            var self = this;
-            var defaults = {};
-            _.each(data, function(val, field_name) {
-                defaults['default_' + field_name] = val;
-            });
-            var something_saved = false;
-            var pop = new instance.web.form.FormOpenPopup(this);
-            pop.show_element(this.dataset.model, null, this.dataset.get_context(defaults), {
-                title: _t("Create: ") + ' ' + this.name,
-                disable_multiple_selection: true,
-            });
-            // pop.on('closed', self, function() {
-            // });
-            pop.on('create_completed', self, function(id) {
-                something_saved = true;
-                self.dataset.ids.push(id);
-                self.refresh_event(id);
-            });
         },
         open_event: function(id) {
             var index = this.dataset.get_id_index(id);
@@ -447,8 +442,125 @@ openerp.web_fullcalendar = function(instance) {
             return this._super(action);
         },
 
+        /**
+         * Handles a newly created record
+         *
+         * @param {id} id of the newly created record
+         */
+        quick_created: function (id) {
+            this.dataset.ids.push(id);
+            this.refresh_event(id);
+        },
+
     });
 
+
+    /**
+     * Quick creation view.
+     *
+     * Triggers a single event "added" with a single parameter "name", which is the
+     * name entered by the user
+     *
+     * @class
+     * @type {*}
+     */
+    instance.web_calendar.QuickCreate = instance.web.Widget.extend({
+        template: 'CalendarView.quick_create',
+
+        /**
+         * close_btn: If true, the widget will display a "Close" button able to trigger
+         * a "close" event.
+         */
+        init: function(parent, dataset, context, buttons) {
+            this._super(parent);
+            this.dataset = dataset;
+            this._buttons = buttons || false;
+            this._context = context || {};
+        },
+        get_title: function () {
+            return _t("Create: ") + (this.getParent().string || this.getParent().name);
+        },
+        start: function () {
+            var self = this;
+            self.$input = this.$el.find('input');
+            self.$input.keyup(function(event){
+                if(event.keyCode == 13){
+                    self.quick_add();
+                }
+            });
+            $(".oe_calendar_quick_create_add", this.$el).click(function () {
+                self.quick_add();
+                self.focus();
+            });
+            $(".oe_calendar_quick_create_close", this.$el).click(function (ev) {
+                ev.preventDefault();
+                self.trigger('close');
+            });
+            self.$input.keyup(function(e) {
+                if (e.keyCode == 27 && self._buttons) {
+                    self.trigger('close');
+                }
+            });
+            self.$el.dialog({ title: this.get_title()});
+            self.on('added', self, function() {
+                self.trigger('close');
+            });
+        },
+        focus: function() {
+            this.$el.find('input').focus();
+        },
+
+        /**
+         * Gathers data from the quick create dialog a launch quick_create(data) method
+         */
+        quick_add: function() {
+            var val = this.$input.val();
+            if (/^\s*$/.test(val)) { return; }
+            this.quick_create({'name': val});
+        },
+
+        /**
+         * Handles saving data coming from quick create box
+         */
+        quick_create: function(data) {
+            var self = this;
+            this.dataset._model.call('create', [data], {context: this._context})
+                .then(function(id) {
+                    self.$input.val("");
+                    self.trigger('added', id);
+                }).fail(function(r, event) {
+                    event.preventDefault();
+                    // This will occurs if there are some more fields required
+                    self.slow_create(data);
+                });
+        },
+
+        /**
+         * Show full form popup
+         */
+        slow_create: function(data) {
+            var self = this;
+            var defaults = {};
+            _.each(data, function(val, field_name) {
+                defaults['default_' + field_name] = val;
+            });
+            var ctx = new instance.web.CompoundContext(
+                self._context, defaults);
+
+            var something_saved = false;
+            var pop = new instance.web.form.FormOpenPopup(this);
+            pop.show_element(this.dataset.model, null, ctx, {
+                title: this.get_title(),
+                disable_multiple_selection: true,
+            });
+            // pop.on('closed', self, function() {
+            // });
+            pop.on('create_completed', self, function(id) {
+                something_saved = true;
+                self.trigger('added', id);
+            });
+        },
+    });
 };
 
 // vim:et fdc=0 fdl=0 foldnestmax=3 fdm=syntax:
