@@ -1,6 +1,6 @@
 <template>
   <t t-name="FullCalendarView">
-    <div class="oe_kanban_view">
+    <div class="oe_calendar_view">
       <div class="oe_calendar_buttons"/>
       <div class="oe_fullcalendar_widget" />
       <div class="oe_calendar_qc_placeholder"/>
