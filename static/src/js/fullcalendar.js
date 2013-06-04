@@ -364,11 +364,17 @@ openerp.web_fullcalendar = function(instance) {
                 this.$calendar.fullCalendar('removeEventSource', this.event_source);
             this.event_source = {
                 events: function(start, end, callback) {
+                    var current_event_source = self.event_source;
                     self.dataset.read_slice(_.keys(self.fields), {
                         offset: 0,
                         domain: self.get_range_domain(domain, start, end),
                         context: context,
                     }).done(function(events) {
+                        if (self.event_source !== current_event_source) {
+                            // Event source changed while waiting for AJAX response
+                            console.log("Consecutive ``do_search`` called. Cancelling.");
+                            return;
+                        }
                         return callback(events);
                     });
                 },
