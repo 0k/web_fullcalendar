@@ -160,10 +160,9 @@ openerp.web_fullcalendar = function(instance) {
 
         },
 
-        init_fullcalendar: function() {
+        get_fc_init_options: function () {
             var self = this;
-
-            this.$calendar.fullCalendar($.extend({
+            return $.extend({}, defaultOptions, {
 
                 defaultView: (this.mode == "month")?"month":
                     (this.mode == "week"?"agendaWeek":
@@ -226,8 +225,11 @@ openerp.web_fullcalendar = function(instance) {
                 weekNumbers: true,
                 snapMinutes: 15,
 
-            }, defaultOptions));
+            });
+        },
 
+        init_fullcalendar: function() {
+            this.$calendar.fullCalendar(this.get_fc_init_options());
         },
 
         /**
