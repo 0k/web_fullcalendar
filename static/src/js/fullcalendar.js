@@ -570,6 +570,195 @@ openerp.web_fullcalendar = function(instance) {
             });
         },
     });
+
+
+    /**
+     * Form widgets
+     */
+
+    function m2m_calendar_lazy_init() {
+        if (instance.web.form.Many2ManyCalendarView)
+            return;
+
+        instance.web_fullcalendar.Many2ManyCalendarView = instance.web_fullcalendar.FullCalendarView.extend({
+            quick_create_class: 'instance.web.form.Many2ManyQuickCreate',
+            quick_created: function (id) {
+                // This will trigger dirty state if necessary
+                this.m2m.add_one_id(id);
+                this.refresh_event(id);
+            },
+
+            // In forms, we could be hidden in a notebook. Thus we couldn't
+            // render correctly fullcalendar so we try to detect when we are
+            // not visible to wait for when we will be visible.
+            init_fullcalendar: function() {
+                if (this.$calendar.width() !== 0) { // visible
+                    return this._super();
+                }
+
+                // find all parents tabs.
+                var def = $.Deferred();
+                var self = this;
+                this.$calendar.parents(".ui-tabs").on('tabsactivate', this, function() {
+                    if (self.$calendar.width() !== 0) { // visible
+                        self.$calendar.fullCalendar(self.get_fc_init_options());
+                        def.resolve();
+                    }
+                });
+                return def;
+            },
+
+        });
+        instance.web.form.Many2ManyQuickCreate =  instance.web_calendar.QuickCreate.extend({
+            init: function(parent, dataset, context, buttons) {
+                this._super.apply(this, arguments);
+                this.m2m = this.getParent().m2m;
+                this.m2m.quick_create = this;
+            },
+        });
+    }
+
+
+    instance.web_fullcalendar.FieldMany2ManyCalendar = instance.web.form.AbstractField.extend({
+        disable_utility_classes: true,
+
+        init: function(field_manager, node) {
+            this._super(field_manager, node);
+            m2m_calendar_lazy_init();
+            this.is_loaded = $.Deferred();
+            this.initial_is_loaded = this.is_loaded;
+
+            var self = this;
+
+            // This dataset will use current widget to '.build_context()'.
+            this.dataset = new instance.web.form.Many2ManyDataSet(
+                this, this.field.relation);
+            this.dataset.m2m = this;
+
+            this.dataset.on('unlink', self, function(_ids) {
+                self.dataset_changed();
+            });
+
+            // quick_create widget instance will be attached when spawned
+            this.quick_create = null;
+        },
+
+        start: function() {
+            this._super.apply(this, arguments);
+
+            var self = this;
+
+            self.load_view();
+            self.on("change:effective_readonly", self, function() {
+                self.is_loaded = self.is_loaded.then(function() {
+                    self.calendar_view.destroy();
+                    return $.when(self.load_view()).done(function() {
+                        self.render_value();
+                    });
+                });
+            });
+        },
+
+        set_value: function(value_) {
+            value_ = value_ || [];
+            if (value_.length >= 1 && value_[0] instanceof Array) {
+                value_ = value_[0][2];
+            }
+            this._super(value_);
+        },
+
+        get_value: function() {
+            // see to use ``commands.replace_with`` provided in
+            // ``instance.web.form`` but not yet shared.
+            return [[6, false, this.get('value')]];
+        },
+
+        load_view: function() {
+            var self = this;
+            this.calendar_view = new instance.web_fullcalendar.Many2ManyCalendarView(this, this.dataset, false, {
+                'create_text': _t("Add"),
+                'creatable': self.get("effective_readonly") ? false : true,
+                'quick_creatable': self.get("effective_readonly") ? false : true,
+                'read_only_mode': self.get("effective_readonly") ? true : false,
+                'confirm_on_delete': false,
+            });
+            var embedded = (this.field.views || {}).calendar;
+            if (embedded) {
+                this.calendar_view.set_embedded_view(embedded);
+            }
+            this.calendar_view.m2m = this;
+            var loaded = $.Deferred();
+            this.calendar_view.on("calendar_view_loaded", self, function() {
+                self.initial_is_loaded.resolve();
+                loaded.resolve();
+            });
+            this.calendar_view.on('switch_mode', this, this.open_popup);
+            $.async_when().done(function () {
+                self.calendar_view.appendTo(self.$el);
+            });
+            return loaded;
+        },
+
+        render_value: function() {
+            var self = this;
+            this.dataset.set_ids(this.get("value"));
+            this.is_loaded = this.is_loaded.then(function() {
+                return self.calendar_view.do_search(self.build_domain(), self.dataset.get_context(), []);
+            });
+        },
+
+        dataset_changed: function() {
+            this.set({'value': this.dataset.ids});
+        },
+
+        open_popup: function(type, unused) {
+            if (type !== "form")
+                return;
+            var self = this;
+            var pop;
+            if (this.dataset.index === null) {
+                pop = new instance.web.form.SelectCreatePopup(this);
+                pop.select_element(
+                    this.field.relation,
+                    {
+                        title: _t("Add: ") + this.string
+                    },
+                    new instance.web.CompoundDomain(this.build_domain(), ["!", ["id", "in", this.dataset.ids]]),
+                    this.build_context()
+                );
+                pop.on("elements_selected", self, function(element_ids) {
+                    _.each(element_ids, function(one_id) {
+                        self.add_one_id(one_id);
+                    });
+                });
+            } else {
+                var id = self.dataset.ids[self.dataset.index];
+                pop = new instance.web.form.FormOpenPopup(this);
+                pop.show_element(self.field.relation, id, self.build_context(), {
+                    title: _t("Open: ") + self.string,
+                    write_function: function(id, data, _options) {
+                        return self.dataset.write(id, data, {}).done(function() {
+                            self.render_value();
+                        });
+                    },
+                    alternative_form_view: self.field.views ? self.field.views.form : undefined,
+                    parent_view: self.view,
+                    child_name: self.name,
+                    readonly: self.get("effective_readonly")
+                });
+            }
+        },
+        add_one_id: function(id) {
+            if(! _.detect(this.dataset.ids, function(x) {return x == id;})) {
+                this.dataset.set_ids([].concat(this.dataset.ids, [id]));
+                this.dataset_changed(); // will call render_value
+            }
+        },
+
+    });
+
+    instance.web.form.widgets.add('many2many_calendar','instance.web_fullcalendar.FieldMany2ManyCalendar');
+
 };
 
 // vim:et fdc=0 fdl=0 foldnestmax=3 fdm=syntax:
