@@ -152,10 +152,10 @@ openerp.web_fullcalendar = function(instance) {
                 .call("check_access_rights", ["create", false])
                 .then(function (create_right) {
                     self.create_right = create_right;
-                    self.init_fullcalendar();
-
-                    self.trigger('calendar_view_loaded', fv);
-                    self.ready.resolve();
+                    self.init_fullcalendar().then(function() {
+                        self.trigger('calendar_view_loaded', fv);
+                        self.ready.resolve();
+                    });
                 });
 
         },
@@ -230,6 +230,7 @@ openerp.web_fullcalendar = function(instance) {
 
         init_fullcalendar: function() {
             this.$calendar.fullCalendar(this.get_fc_init_options());
+            return $.when();
         },
 
         /**
