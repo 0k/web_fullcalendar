@@ -678,6 +678,9 @@ openerp.web_fullcalendar = function(instance) {
 
             // quick_create widget instance will be attached when spawned
             this.quick_create = null;
+
+            this.no_rerender = true;
+
         },
 
         start: function() {
@@ -788,7 +791,11 @@ openerp.web_fullcalendar = function(instance) {
         add_one_id: function(id) {
             if(! _.detect(this.dataset.ids, function(x) {return x == id;})) {
                 this.dataset.set_ids([].concat(this.dataset.ids, [id]));
-                this.dataset_changed(); // will call render_value
+                // This call used to trigger render_value, but this would redraw full
+                // calendar. So we prevent this by having ``this.no_rerender`` set to true.
+                this.dataset_changed();
+                // And we add only this id
+                this.calendar_view.refresh_event(id);
             }
         },
 
