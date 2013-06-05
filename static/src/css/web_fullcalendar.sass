@@ -5,31 +5,37 @@
         position: relative
 
 .openerp
-    .oe_calendar_sidebar
-        width: 200px
-        padding: 5px
+    .oe_fullcalendar_widget
+        .fc-content
+            .fc-event
+                .close-btn
+                    color: white
+                    position: absolute
+                    top: 1px
+                    right: 1px
+                    display: inline-block
+                    line-height: 6px
+                    height: 8px
+                    width: 8px
+                    border: 1px solid white
+                    border-radius: 3px
+                    text-align: center
+                    padding: 1px
+                    background-color: rgba(180, 0, 0, 1)
+                    box-shadow: 0px 0px 2px rgba(0, 0, 0, .5)
+                    visibility: hidden
+                    z-index: 100
+            .fc-event:hover
+                .close-btn
+                    visibility: visible
+                    opacity: 0.5
+            .fc-event:hover
+                .close-btn:hover
+                    visibility: visible
+                    opacity: 1.0
 
-    .oe_calendar
-        background-color: white
-        min-height: 600px
-        border-right: 1px solid #eee
 
-        .oe_calendar_filter
-            padding: 0 10px
 
-        // Dhtmlx Scheduler css overrides
-        .dhx_cal_select_menu .dhx_menu_icon.icon_edit
-            display: none
-        .dhx_cal_navline
-            // dhtmlx sets the index to 3 (in glossy theme)
-            // I didn't found the reason yet but it overlaps the
-            // dropdown menus and I want to avoid a z-index war.
-            z-index: auto
-
-        &.oe_cal_month .dhx_cal_data
-
-            table tr td:last-child div.dhx_month_body
-                padding-right: 5px
 
 // au BufWritePost,FileWritePost *.sass :!sass --style expanded --line-numbers <afile> > "%:p:r.css"
 // vim:tabstop=4:shiftwidth=4:softtabstop=4:fdm=marker:

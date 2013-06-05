@@ -186,6 +186,9 @@ openerp.web_fullcalendar = function(instance) {
                     var data = self.get_event_data(event);
                     self.proxy('quick_save')(event._id, data);
                 },
+                eventRender: function (event, element, view) {
+                    self.trigger('event_rendered', event, element, view);
+                },
                 eventClick: function (event) { self.open_event(event._id); },
                 select: function (start_date, end_date, all_day, _js_event, _view) {
                     var data = self.get_event_data({
@@ -461,6 +464,20 @@ openerp.web_fullcalendar = function(instance) {
             this.refresh_event(id);
         },
 
+        remove_event: function(id) {
+            var self = this;
+            function do_it() {
+                return $.when(self.dataset.unlink([id])).done(function() {
+                    self.$calendar.fullCalendar('removeEvents', id);
+                });
+            }
+            if (this.options.confirm_on_delete) {
+                if (confirm(_t("Are you sure you want to delete this record ?"))) {
+                    return do_it();
+                }
+            } else
+                return do_it();
+        },
     });
 
 
@@ -588,6 +605,15 @@ openerp.web_fullcalendar = function(instance) {
                 this.refresh_event(id);
             },
 
+            view_loading: function (fv) {
+                var self = this;
+                return $.when(this._super.apply(this, arguments)).then(function() {
+                    self.on('event_rendered', this, function (event, element, view) {
+                        self.append_deletion_handle(event, element, view);
+                    });
+                });
+            },
+
             // In forms, we could be hidden in a notebook. Thus we couldn't
             // render correctly fullcalendar so we try to detect when we are
             // not visible to wait for when we will be visible.
@@ -608,6 +634,17 @@ openerp.web_fullcalendar = function(instance) {
                 return def;
             },
 
+            append_deletion_handle: function (event, element, view) {
+                var self = this;
+                if (!this.options.read_only_mode) {
+                    var $x = $("<a type='delete'><div class='close-btn'>x</div></a>")
+                        .on('click', function(ev) {
+                            self.remove_event(event.id);
+                            ev.preventDefault();
+                        });
+                    element.prepend($x);
+                }
+            },
         });
         instance.web.form.Many2ManyQuickCreate =  instance.web_calendar.QuickCreate.extend({
             init: function(parent, dataset, context, buttons) {
