@@ -615,15 +615,21 @@ openerp.web_fullcalendar = function(instance) {
      * Form widgets
      */
 
-    function m2m_calendar_lazy_init() {
+    function widget_calendar_lazy_init() {
         if (instance.web.form.Many2ManyCalendarView)
             return;
 
         instance.web_fullcalendar.Many2ManyCalendarView = instance.web_fullcalendar.FullCalendarView.extend({
+
+            init: function (parent) {
+                this._super.apply(this, arguments);
+                // Warning: this means only a field_widget should instanciate this Class
+                this.field_widget = parent;
+            },
             quick_create_class: 'instance.web.form.Many2ManyQuickCreate',
             quick_created: function (id) {
                 // This will trigger dirty state if necessary
-                this.m2m.add_one_id(id);
+                this.field_widget.add_one_id(id);
                 this.refresh_event(id);
             },
 
@@ -660,9 +666,32 @@ openerp.web_fullcalendar = function(instance) {
         instance.web.form.Many2ManyQuickCreate =  instance.web_calendar.QuickCreate.extend({
             init: function(parent, dataset, context, buttons) {
                 this._super.apply(this, arguments);
-                this.m2m = this.getParent().m2m;
-                this.m2m.quick_create = this;
             },
+        });
+    }
+
+    instance.web_fullcalendar.fields_dataset = new instance.web.Registry({
+        'many2many': 'instance.web.DataSetStatic',
+        'one2many': 'instance.web.BufferedDataSet',
+    });
+
+
+    function get_field_dataset_class(type) {
+        var obj = instance.web_fullcalendar.fields_dataset.get_any([type]);
+        if (!obj) {
+            throw new Error(_.str.sprintf(_t("Dataset for type '%s' is not defined."), type));
+        }
+
+        // Override definition of legacy datasets to add field_widget context
+        return obj.extend({
+            init: function (parent) {
+                this._super.apply(this, arguments);
+                this.field_widget = parent;
+            },
+            get_context: function() {
+                this.context = this.field_widget.build_context();
+                return this.context;
+            }
         });
     }
 
@@ -672,16 +701,16 @@ openerp.web_fullcalendar = function(instance) {
 
         init: function(field_manager, node) {
             this._super(field_manager, node);
-            m2m_calendar_lazy_init();
+            widget_calendar_lazy_init();
             this.is_loaded = $.Deferred();
             this.initial_is_loaded = this.is_loaded;
 
             var self = this;
 
             // This dataset will use current widget to '.build_context()'.
-            this.dataset = new instance.web.form.Many2ManyDataSet(
+            var field_type = field_manager.fields_view.fields[node.attrs.name].type;
+            this.dataset = new (get_field_dataset_class(field_type))(
                 this, this.field.relation);
-            this.dataset.m2m = this;
 
             this.dataset.on('unlink', self, function(_ids) {
                 self.dataset_changed();
@@ -737,7 +766,6 @@ openerp.web_fullcalendar = function(instance) {
             if (embedded) {
                 this.calendar_view.set_embedded_view(embedded);
             }
-            this.calendar_view.m2m = this;
             var loaded = $.Deferred();
             this.calendar_view.on("calendar_view_loaded", self, function() {
                 self.initial_is_loaded.resolve();
