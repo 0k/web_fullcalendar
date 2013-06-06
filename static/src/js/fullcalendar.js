@@ -189,11 +189,11 @@ openerp.web_fullcalendar = function(instance) {
 
                 eventDrop: function (event, _day_delta, _minute_delta, _all_day, _revertFunc) {
                     var data = self.get_event_data(event);
-                    self.proxy('quick_save')(event._id, data); // we don't revert the event, but update it.
+                    self.proxy('update_record')(event._id, data); // we don't revert the event, but update it.
                 },
                 eventResize: function (event, _day_delta, _minute_delta, _revertFunc) {
                     var data = self.get_event_data(event);
-                    self.proxy('quick_save')(event._id, data);
+                    self.proxy('update_record')(event._id, data);
                 },
                 eventRender: function (event, element, view) {
                     if (!self.options.read_only_mode) {
@@ -420,7 +420,7 @@ openerp.web_fullcalendar = function(instance) {
         /**
          * Updates record identified by ``id`` with values in object ``data``
          */
-        quick_save: function(id, data) {
+        update_record: function(id, data) {
             var self = this;
             delete(data.name); // Cannot modify actual name yet
             var index = this.dataset.get_id_index(id);
