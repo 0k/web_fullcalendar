@@ -619,14 +619,13 @@ openerp.web_fullcalendar = function(instance) {
         if (instance.web.form.Many2ManyCalendarView)
             return;
 
-        instance.web_fullcalendar.Many2ManyCalendarView = instance.web_fullcalendar.FullCalendarView.extend({
+        instance.web_fullcalendar.FieldFullCalendarView = instance.web_fullcalendar.FullCalendarView.extend({
 
             init: function (parent) {
                 this._super.apply(this, arguments);
                 // Warning: this means only a field_widget should instanciate this Class
                 this.field_widget = parent;
             },
-            quick_create_class: 'instance.web.form.Many2ManyQuickCreate',
             quick_created: function (id) {
                 // This will trigger dirty state if necessary
                 this.field_widget.add_one_id(id);
@@ -663,6 +662,11 @@ openerp.web_fullcalendar = function(instance) {
             },
 
         });
+
+        instance.web_fullcalendar.Many2ManyCalendarView = instance.web_fullcalendar.FieldFullCalendarView.extend({
+            quick_create_class: 'instance.web.form.Many2ManyQuickCreate',
+        });
+
         instance.web.form.Many2ManyQuickCreate =  instance.web_calendar.QuickCreate.extend({
             init: function(parent, dataset, context, buttons) {
                 this._super.apply(this, arguments);
@@ -695,9 +699,13 @@ openerp.web_fullcalendar = function(instance) {
         });
     }
 
+    /**
+     * Common part to manage any field using calendar view
+     */
+    instance.web_fullcalendar.FieldCalendar = instance.web.form.AbstractField.extend({
 
-    instance.web_fullcalendar.FieldMany2ManyCalendar = instance.web.form.AbstractField.extend({
         disable_utility_classes: true,
+        fullcalendar_view_class: 'instance.web_fullcalendar.FieldCalendarView',
 
         init: function(field_manager, node) {
             this._super(field_manager, node);
@@ -739,23 +747,10 @@ openerp.web_fullcalendar = function(instance) {
             });
         },
 
-        set_value: function(value_) {
-            value_ = value_ || [];
-            if (value_.length >= 1 && value_[0] instanceof Array) {
-                value_ = value_[0][2];
-            }
-            this._super(value_);
-        },
-
-        get_value: function() {
-            // see to use ``commands.replace_with`` provided in
-            // ``instance.web.form`` but not yet shared.
-            return [[6, false, this.get('value')]];
-        },
-
         load_view: function() {
             var self = this;
-            this.calendar_view = new instance.web_fullcalendar.Many2ManyCalendarView(this, this.dataset, false, {
+            var calendar_view_class = get_class(this.fullcalendar_view_class);
+            this.calendar_view = new calendar_view_class(this, this.dataset, false, {
                 'create_text': _t("Add"),
                 'creatable': self.get("effective_readonly") ? false : true,
                 'quick_creatable': self.get("effective_readonly") ? false : true,
@@ -836,6 +831,25 @@ openerp.web_fullcalendar = function(instance) {
                 // And we add only this id
                 this.calendar_view.refresh_event(id);
             }
+        },
+
+    });
+
+    instance.web_fullcalendar.FieldMany2ManyCalendar = instance.web_fullcalendar.FieldCalendar.extend({
+        fullcalendar_view_class: 'instance.web_fullcalendar.Many2ManyCalendarView',
+
+        set_value: function(value_) {
+            value_ = value_ || [];
+            if (value_.length >= 1 && value_[0] instanceof Array) {
+                value_ = value_[0][2];
+            }
+            this._super(value_);
+        },
+
+        get_value: function() {
+            // see to use ``commands.replace_with`` provided in
+            // ``instance.web.form`` but not yet shared.
+            return [[6, false, this.get('value')]];
         },
 
     });
