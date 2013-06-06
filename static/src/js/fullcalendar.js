@@ -202,37 +202,29 @@ openerp.web_fullcalendar = function(instance) {
                 },
                 eventClick: function (event) { self.open_event(event._id); },
                 select: function (start_date, end_date, all_day, _js_event, _view) {
-                    var data = self.get_event_data({
+                    var data_template = self.get_event_data({
                         start: start_date,
                         end: end_date,
                         allDay: all_day,
                     });
-                    delete data.title;
-
-                    // Preparing context
-
-                    var ctx = {};
-                    _(data).each(function (value, key) {
-                        ctx['default_' + key] = value;
-                    });
-                    ctx = new instance.web.CompoundContext(
-                        self.dataset.get_context(), ctx);
 
                     // Opening quick create widget
 
                     if (self.quick) {
                         return self.quick.trigger('close');
                     }
-                    self.quick = new (get_class(self.quick_create_class))(self, self.dataset, ctx, true)
+                    self.quick = new (get_class(self.quick_create_class))(
+                        self, self.dataset, true, data_template)
                         .on('added', self, self.proxy('quick_created'))
                         .on('close', self, function() {
                             this.quick.destroy();
                             delete this.quick;
+                            self.$calendar.fullCalendar('unselect');
                         });
                     self.quick.replace($(".oe_calendar_qc_placeholder"));
                     self.quick.focus();
-                    self.$calendar.fullCalendar('unselect');
                 },
+                unselectAuto: false,
 
                 // Options
 
@@ -519,11 +511,13 @@ openerp.web_fullcalendar = function(instance) {
          * close_btn: If true, the widget will display a "Close" button able to trigger
          * a "close" event.
          */
-        init: function(parent, dataset, context, buttons) {
+        init: function(parent, dataset, buttons, data_template) {
             this._super(parent);
             this.dataset = dataset;
             this._buttons = buttons || false;
-            this._context = context || {};
+
+            // Can hold data pre-set from where you clicked on agenda
+            this.data_template = data_template || {};
         },
         get_title: function () {
             return _t("Create: ") + (this.getParent().string || this.getParent().name);
@@ -570,9 +564,9 @@ openerp.web_fullcalendar = function(instance) {
         /**
          * Handles saving data coming from quick create box
          */
-        quick_create: function(data) {
+        quick_create: function(data, options) {
             var self = this;
-            this.dataset._model.call('create', [data], {context: this._context})
+            this.dataset.create($.extend({}, this.data_template, data), options)
                 .then(function(id) {
                     self.$input.val("");
                     self.trigger('added', id);
@@ -592,12 +586,10 @@ openerp.web_fullcalendar = function(instance) {
             _.each(data, function(val, field_name) {
                 defaults['default_' + field_name] = val;
             });
-            var ctx = new instance.web.CompoundContext(
-                self._context, defaults);
 
             var something_saved = false;
             var pop = new instance.web.form.FormOpenPopup(this);
-            pop.show_element(this.dataset.model, null, ctx, {
+            pop.show_element(this.dataset.model, null, defaults, {
                 title: this.get_title(),
                 disable_multiple_selection: true,
             });
@@ -668,7 +660,7 @@ openerp.web_fullcalendar = function(instance) {
         });
 
         instance.web.form.Many2ManyQuickCreate =  instance.web_calendar.QuickCreate.extend({
-            init: function(parent, dataset, context, buttons) {
+            init: function(parent, dataset, buttons) {
                 this._super.apply(this, arguments);
             },
         });
