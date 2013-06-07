@@ -597,7 +597,6 @@ openerp.web_fullcalendar = function(instance) {
                 defaults['default_' + field_name] = val;
             });
 
-            var something_saved = false;
             var pop = new instance.web.form.FormOpenPopup(this);
             pop.show_element(this.dataset.model, null, defaults, {
                 title: this.get_title(),
@@ -635,7 +634,6 @@ openerp.web_fullcalendar = function(instance) {
             // pop.on('closed', self, function() {
             // });
             pop.on('create_completed', self, function(id) {
-                something_saved = true;
                 self.trigger('added', id);
             });
         },
