@@ -718,19 +718,28 @@ openerp.web_fullcalendar = function(instance) {
                             .value();
                     });
             }
-            this.required_fields.then(function (required_fields) {
+            $.when(this.required_fields).then(function (required_fields) {
                 var missing_fields = _(required_fields).filter(function (v) {
                     return typeof data[v] === "undefined";
                 });
-                if (missing_fields.length !== 0) {
-                    def.reject(
-                        _.str.sprintf(
-                            _t("Missing required fields %s"), missing_fields.join(", ")),
-                        $.Event());
-                    return;
-                }
-                create.apply(self, [data, options]).then(function (result) {
-                    def.resolve(result);
+                var default_get = (missing_fields.length !== 0) ?
+                    self.default_get(missing_fields) : [];
+                $.when(default_get).then(function (defaults) {
+
+                    // Remove all fields that have a default from the missing fields.
+                    missing_fields = _(missing_fields).filter(function (f) {
+                        return typeof defaults[f] === "undefined";
+                    });
+                    if (missing_fields.length !== 0) {
+                        def.reject(
+                            _.str.sprintf(
+                                _t("Missing required fields %s"), missing_fields.join(", ")),
+                            $.Event());
+                        return;
+                    }
+                    create.apply(self, [data, options]).then(function (result) {
+                        def.resolve(result);
+                    });
                 });
             });
             return def;
