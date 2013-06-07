@@ -463,7 +463,17 @@ openerp.web_fullcalendar = function(instance) {
          * @param {id} id of the newly created record
          */
         quick_created: function (id) {
-            this.dataset.ids.push(id);
+
+            /** Note:
+             * it's of the most utter importance NOT to use inplace
+             * modification on this.dataset.ids as reference to this
+             * data is spread out everywhere in the various widget.
+             * Some of these reference includes values that should
+             * trigger action upon modification.
+             */
+            this.dataset.ids = this.dataset.ids.concat([id]);
+            // Inform every body that dataset changed
+            this.dataset.trigger("dataset_changed", id);
             this.refresh_event(id);
         },
 
@@ -592,6 +602,35 @@ openerp.web_fullcalendar = function(instance) {
             pop.show_element(this.dataset.model, null, defaults, {
                 title: this.get_title(),
                 disable_multiple_selection: true,
+                // Ensuring we use ``self.dataset`` and DO NOT create a new one.
+                create_function: function(data, options) {
+                    return self.dataset.create(data, options).done(function(r) {
+                        // Although ``self.dataset.create`` DOES not call ``dataset_changed`` in O2M
+                        // it gets called thanks to ``create_completed`` -> ``added``
+                        // XXXvlab: why ``create`` does not call dataset_changed AND adds id in dataset.ids
+                        // is a mystery for me ATM.
+                    }).fail(function (r, event) {
+                        throw new Error(r);
+                    });
+                },
+
+                // ATM this method should not be attainable as the current pop up is
+                // spawned only for newly created objects.
+
+                // write_function: function(id, data, options) {
+                //     return self.dataset.write(id, data, options).done(function() {
+                //     }).fail(function (r, event) {
+                //         throw new Error(r);
+                //     });
+                // },
+                read_function: function(id, fields, options) {
+                    return self.dataset.read_ids.apply(self.dataset, arguments).done(function() {
+                    }).fail(function (r, event) {
+                        throw new Error(r);
+                    });
+                },
+
+
             });
             // pop.on('closed', self, function() {
             // });
@@ -617,11 +656,6 @@ openerp.web_fullcalendar = function(instance) {
                 this._super.apply(this, arguments);
                 // Warning: this means only a field_widget should instanciate this Class
                 this.field_widget = parent;
-            },
-            quick_created: function (id) {
-                // This will trigger dirty state if necessary
-                this.field_widget.add_one_id(id);
-                this.refresh_event(id);
             },
 
             view_loading: function (fv) {
@@ -653,22 +687,59 @@ openerp.web_fullcalendar = function(instance) {
                 return def;
             },
 
+
         });
 
-        instance.web_fullcalendar.Many2ManyCalendarView = instance.web_fullcalendar.FieldFullCalendarView.extend({
-            quick_create_class: 'instance.web.form.Many2ManyQuickCreate',
-        });
-
-        instance.web.form.Many2ManyQuickCreate =  instance.web_calendar.QuickCreate.extend({
-            init: function(parent, dataset, buttons) {
-                this._super.apply(this, arguments);
-            },
-        });
     }
+
+    instance.web_fullcalendar.BufferedDataSet = instance.web.BufferedDataSet.extend({
+
+        /**
+         * Adds verification on possible missing fields for the sole purpose of
+         * O2M dataset being compatible with the ``slow_create`` detection of
+         * missing fields... which is as simple to try to write and upon failure
+         * go to ``slow_create``. Current BufferedDataSet would'nt fail because
+         * they do not send data to the server at create time.
+         */
+        create: function (data, options) {
+            var def = $.Deferred();
+            var self = this;
+            var create = this._super;
+            if (typeof this.required_fields === "undefined") {
+                this.required_fields = (new instance.web.Model(this.model))
+                    .call('fields_get').then(function (fields_def) {
+                        return _(fields_def).chain()
+                         // equiv to .pairs()
+                            .map(function (value, key) { return [key, value]; })
+                         // equiv to .omit(self.field_widget.field.relation_field)
+                            .filter(function (pair) { return pair[0] !== self.field_widget.field.relation_field; })
+                            .filter(function (pair) { return pair[1].required; })
+                            .map(function (pair) { return pair[0]; })
+                            .value();
+                    });
+            }
+            this.required_fields.then(function (required_fields) {
+                var missing_fields = _(required_fields).filter(function (v) {
+                    return typeof data[v] === "undefined";
+                });
+                if (missing_fields.length !== 0) {
+                    def.reject(
+                        _.str.sprintf(
+                            _t("Missing required fields %s"), missing_fields.join(", ")),
+                        $.Event());
+                    return;
+                }
+                create.apply(self, [data, options]).then(function (result) {
+                    def.resolve(result);
+                });
+            });
+            return def;
+        },
+    });
 
     instance.web_fullcalendar.fields_dataset = new instance.web.Registry({
         'many2many': 'instance.web.DataSetStatic',
-        'one2many': 'instance.web.BufferedDataSet',
+        'one2many': 'instance.web_fullcalendar.BufferedDataSet',
     });
 
 
@@ -697,7 +768,7 @@ openerp.web_fullcalendar = function(instance) {
     instance.web_fullcalendar.FieldCalendar = instance.web.form.AbstractField.extend({
 
         disable_utility_classes: true,
-        fullcalendar_view_class: 'instance.web_fullcalendar.FieldCalendarView',
+        fullcalendar_view_class: 'instance.web_fullcalendar.FieldFullCalendarView',
 
         init: function(field_manager, node) {
             this._super(field_manager, node);
@@ -712,8 +783,8 @@ openerp.web_fullcalendar = function(instance) {
             this.dataset = new (get_field_dataset_class(field_type))(
                 this, this.field.relation);
 
-            this.dataset.on('unlink', self, function(_ids) {
-                self.dataset_changed();
+            this.dataset.on('unlink', this, function(_ids) {
+                this.dataset.trigger('dataset_changed');
             });
 
             // quick_create widget instance will be attached when spawned
@@ -773,10 +844,6 @@ openerp.web_fullcalendar = function(instance) {
             });
         },
 
-        dataset_changed: function() {
-            this.set({'value': this.dataset.ids});
-        },
-
         open_popup: function(type, unused) {
             if (type !== "form")
                 return;
@@ -793,8 +860,12 @@ openerp.web_fullcalendar = function(instance) {
                     this.build_context()
                 );
                 pop.on("elements_selected", self, function(element_ids) {
-                    _.each(element_ids, function(one_id) {
-                        self.add_one_id(one_id);
+                    _.each(element_ids, function(id) {
+                        if (!_.detect(self.dataset.ids, function(x) {return x == id;})) {
+                            self.dataset.set_ids([].concat(self.dataset.ids, [id]));
+                            self.calendar_view.refresh_event(id);
+                        }
+                        self.dataset.trigger("dataset_changed");
                     });
                 });
             } else {
@@ -804,7 +875,8 @@ openerp.web_fullcalendar = function(instance) {
                     title: _t("Open: ") + self.string,
                     write_function: function(id, data, _options) {
                         return self.dataset.write(id, data, {}).done(function() {
-                            self.render_value();
+                            // Note that dataset will trigger itself the ``dataset_changed`` signal
+                            self.calendar_view.refresh_event(id);
                         });
                     },
                     alternative_form_view: self.field.views ? self.field.views.form : undefined,
@@ -814,21 +886,18 @@ openerp.web_fullcalendar = function(instance) {
                 });
             }
         },
-        add_one_id: function(id) {
-            if(! _.detect(this.dataset.ids, function(x) {return x == id;})) {
-                this.dataset.set_ids([].concat(this.dataset.ids, [id]));
-                // This call used to trigger render_value, but this would redraw full
-                // calendar. So we prevent this by having ``this.no_rerender`` set to true.
-                this.dataset_changed();
-                // And we add only this id
-                this.calendar_view.refresh_event(id);
-            }
-        },
 
     });
 
     instance.web_fullcalendar.FieldMany2ManyCalendar = instance.web_fullcalendar.FieldCalendar.extend({
-        fullcalendar_view_class: 'instance.web_fullcalendar.Many2ManyCalendarView',
+
+        init: function(field_manager, node) {
+            this._super(field_manager, node);
+            this.dataset.on('dataset_changed', this, function() {
+                // Will set dirty state if necessary
+                this.set({'value': this.dataset.ids});
+            });
+        },
 
         set_value: function(value_) {
             value_ = value_ || [];
@@ -846,7 +915,31 @@ openerp.web_fullcalendar = function(instance) {
 
     });
 
+
+    instance.web_fullcalendar.FieldOne2ManyCalendar = instance.web_fullcalendar.FieldCalendar.extend({
+
+        init: function(field_manager, node) {
+            this._super(field_manager, node);
+            this.dataset.on('dataset_changed', this, function() {
+                // Force dirty state, as if dataset changed, then 'get_value'
+                // result will change because it uses directly the dataset to
+                // compute its result.
+                this.trigger('changed_value');
+            });
+        },
+
+        set_value: instance.web.form.FieldOne2Many.prototype.set_value,
+        get_value: instance.web.form.FieldOne2Many.prototype.get_value,
+        // XXX needed by set_value for no reason at all, TO REMOVE when
+        // FieldOne2Many.set_value will be cleaned.
+        trigger_on_change: function() {},
+        reload_current_view: function() {},
+
+    });
+
+
     instance.web.form.widgets.add('many2many_calendar','instance.web_fullcalendar.FieldMany2ManyCalendar');
+    instance.web.form.widgets.add('one2many_calendar','instance.web_fullcalendar.FieldOne2ManyCalendar');
 
 };
 
