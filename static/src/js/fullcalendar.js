@@ -856,46 +856,36 @@ openerp.web_fullcalendar = function(instance) {
         open_popup: function(type, unused) {
             if (type !== "form")
                 return;
-            var self = this;
-            var pop;
             if (this.dataset.index === null) {
-                pop = new instance.web.form.SelectCreatePopup(this);
-                pop.select_element(
-                    this.field.relation,
-                    {
-                        title: _t("Add: ") + this.string
-                    },
-                    new instance.web.CompoundDomain(this.build_domain(), ["!", ["id", "in", this.dataset.ids]]),
-                    this.build_context()
-                );
-                pop.on("elements_selected", self, function(element_ids) {
-                    _.each(element_ids, function(id) {
-                        if (!_.detect(self.dataset.ids, function(x) {return x == id;})) {
-                            self.dataset.set_ids([].concat(self.dataset.ids, [id]));
-                            self.calendar_view.refresh_event(id);
-                        }
-                        self.dataset.trigger("dataset_changed");
-                    });
-                });
+                if (typeof this.open_popup_add === "function")
+                    this.open_popup_add();
             } else {
-                var id = self.dataset.ids[self.dataset.index];
-                pop = new instance.web.form.FormOpenPopup(this);
-                pop.show_element(self.field.relation, id, self.build_context(), {
-                    title: _t("Open: ") + self.string,
-                    write_function: function(id, data, _options) {
-                        return self.dataset.write(id, data, {}).done(function() {
-                            // Note that dataset will trigger itself the ``dataset_changed`` signal
-                            self.calendar_view.refresh_event(id);
-                        });
-                    },
-                    alternative_form_view: self.field.views ? self.field.views.form : undefined,
-                    parent_view: self.view,
-                    child_name: self.name,
-                    readonly: self.get("effective_readonly")
-                });
+                if (typeof this.open_popup_edit === "function")
+                    this.open_popup_edit();
             }
         },
-
+        open_popup_add: function() {
+            throw new Error("Not Implemented");
+        },
+        open_popup_edit: function() {
+            var id = this.dataset.ids[this.dataset.index];
+            var self = this;
+            var pop = (new instance.web.form.FormOpenPopup(this));
+            pop.show_element(this.field.relation, id, this.build_context(), {
+                title: _t("Open: ") + this.string,
+                write_function: function(id, data, _options) {
+                    return self.dataset.write(id, data, {}).done(function() {
+                        // Note that dataset will trigger itself the
+                        // ``dataset_changed`` signal
+                        self.calendar_view.refresh_event(id);
+                    });
+                },
+                alternative_form_view: this.field.views ? this.field.views.form : undefined,
+                parent_view: this.view, //XXXvlab: to check ! this.view is likely undefined
+                child_name: this.name,
+                readonly: this.get("effective_readonly")
+            });
+        }
     });
 
     instance.web_fullcalendar.FieldMany2ManyCalendar = instance.web_fullcalendar.FieldCalendar.extend({
@@ -921,6 +911,29 @@ openerp.web_fullcalendar = function(instance) {
             // ``instance.web.form`` but not yet shared.
             return [[6, false, this.get('value')]];
         },
+        open_popup_add: function() {
+            var pop = (new instance.web.form.SelectCreatePopup(this));
+            var self = this;
+            pop.select_element(
+                this.field.relation,
+                {
+                    title: _t("Add: ") + this.string
+                },
+                new instance.web.CompoundDomain(
+                    this.build_domain(),
+                    ["!", ["id", "in", this.dataset.ids]]),
+                this.build_context()
+            );
+            pop.on("elements_selected", this, function(element_ids) {
+                _.each(element_ids, function(id) {
+                    if (!_.detect(self.dataset.ids, function(x) {return x == id;})) {
+                        self.dataset.set_ids([].concat(self.dataset.ids, [id]));
+                        self.calendar_view.refresh_event(id);
+                    }
+                    self.dataset.trigger("dataset_changed");
+                });
+            });
+        }
 
     });
 
@@ -943,6 +956,8 @@ openerp.web_fullcalendar = function(instance) {
         // FieldOne2Many.set_value will be cleaned.
         trigger_on_change: function() {},
         reload_current_view: function() {},
+
+        open_popup_add: false, // deactivate button "Add"
 
     });
 
