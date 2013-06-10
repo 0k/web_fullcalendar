@@ -878,6 +878,13 @@ openerp.web_fullcalendar = function(instance) {
                         self.calendar_view.refresh_event(id);
                     });
                 },
+                read_function: function(id, fields, options) {
+                    return self.dataset.read_ids.apply(self.dataset, arguments).done(function() {
+                    }).fail(function (r, event) {
+                        throw new Error(r);
+                    });
+                },
+
                 alternative_form_view: this.field.views ? this.field.views.form : undefined,
                 parent_view: this.view, //XXXvlab: to check ! this.view is likely undefined
                 child_name: this.name,
