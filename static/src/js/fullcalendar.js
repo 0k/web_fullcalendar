@@ -634,8 +634,8 @@ openerp.web_fullcalendar = function(instance) {
             var self = this;
             this.dataset.create($.extend({}, this.data_template, data), options)
                 .then(function(id) {
-                    self.$input.val("");
                     self.trigger('added', id);
+                    self.$input.val("");
                 }).fail(function(r, event) {
                     event.preventDefault();
                     // This will occurs if there are some more fields required
