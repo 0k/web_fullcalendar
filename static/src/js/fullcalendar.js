@@ -586,7 +586,12 @@ openerp.web_fullcalendar = function(instance) {
             this.data_template = data_template || {};
         },
         get_title: function () {
-            return _t("Create: ") + (this.getParent().string || this.getParent().name);
+            var parent = this.getParent();
+            var title =
+                (typeof parent.field_widget === "undefined") ?
+                    (parent.string || parent.name) :
+                parent.field_widget.string || parent.field_widget.name || '';
+            return _t("Create: ") + title;
         },
         start: function () {
             var self = this;
