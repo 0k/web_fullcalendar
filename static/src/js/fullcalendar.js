@@ -250,25 +250,27 @@ openerp.web_fullcalendar = function(instance) {
                 // really be modified so it should never be refreshed. As upon
                 // edition, a NEW event with a non-virtual id will be created.
                 console.warn("Unwise use of refresh_event on a virtual ID.");
-            this.dataset.read_ids([id], _.keys(this.fields)).done(function (record) {
-                // Event boundaries were already changed by fullcalendar, but we need to reload them:
-                var new_event = self.event_data_transform(record[0]);
-                // fetch event_obj
-                var event_objs = self.$calendar.fullCalendar('clientEvents', id);
-                if (event_objs.length == 1) { // Already existing obj to update
-                    var event_obj = event_objs[0];
-                    // update event_obj
-                    _(new_event).each(function (value, key) {
-                        event_obj[key] = value;
-                    });
-                    self.$calendar.fullCalendar('updateEvent', event_obj);
-                } else { // New event object to create
-                    self.$calendar.fullCalendar('renderEvent', new_event);
-                    // By forcing attribution of this event to this source, we
-                    // make sure that the event will be removed when the source
-                    // will be removed (which occurs at each do_search)
-                    self.$calendar.fullCalendar('clientEvents', id)[0].source = self.event_source;
-                }
+            this.dataset.read_ids([id], _.keys(this.fields)).done(function (incomplete_records) {
+                self.perform_necessary_name_gets(incomplete_records).then(function(records) {
+                    // Event boundaries were already changed by fullcalendar, but we need to reload them:
+                    var new_event = self.event_data_transform(records[0]);
+                    // fetch event_obj
+                    var event_objs = self.$calendar.fullCalendar('clientEvents', id);
+                    if (event_objs.length == 1) { // Already existing obj to update
+                        var event_obj = event_objs[0];
+                        // update event_obj
+                        _(new_event).each(function (value, key) {
+                            event_obj[key] = value;
+                        });
+                        self.$calendar.fullCalendar('updateEvent', event_obj);
+                    } else { // New event object to create
+                        self.$calendar.fullCalendar('renderEvent', new_event);
+                        // By forcing attribution of this event to this source, we
+                        // make sure that the event will be removed when the source
+                        // will be removed (which occurs at each do_search)
+                        self.$calendar.fullCalendar('clientEvents', id)[0].source = self.event_source;
+                    }
+                });
             });
         },
 
@@ -281,6 +283,54 @@ openerp.web_fullcalendar = function(instance) {
         //     this.color_map[key] = color;
         //     return color;
         // },
+
+        /**
+         * In o2m case, records from dataset won't have names attached to their *2o values.
+         * We should make sure this is the case.
+         */
+        perform_necessary_name_gets: function(evts) {
+            var def = $.Deferred();
+            var self = this;
+            var to_get = {};
+            _(this.info_fields).each(function (fieldname) {
+                if (!_(["many2one", "one2one"]).contains(
+                    self.fields[fieldname].type))
+                    return;
+                to_get[fieldname] = [];
+                _(evts).each(function (evt) {
+                    var value = evt[fieldname];
+                    if (value === false || (value instanceof Array))
+                        return;
+                    to_get[fieldname].push(value);
+                });
+                if (to_get[fieldname].length === 0)
+                    delete to_get[fieldname];
+            });
+            var defs = _(to_get).map(function (ids, fieldname) {
+                return (new instance.web.Model(self.fields[fieldname].relation))
+                    .call('name_get', ids).then(function (vals) {
+                        return [fieldname, vals];
+                    });
+            });
+
+            $.when.apply(this, defs).then(function() {
+                var values = arguments;
+                _(values).each(function(value) {
+                    var fieldname = value[0];
+                    var name_gets = value[1];
+                    _(name_gets).each(function(name_get) {
+                        _(evts).chain()
+                            .filter(function (e) {return e[fieldname] == name_get[0];})
+                            .each(function(evt) {
+                                evt[fieldname] = name_get;
+                            });
+                    });
+                });
+                def.resolve(evts);
+            });
+            return def;
+        },
+
 
         /**
          * Transform OpenERP event object to fullcalendar event object
@@ -298,18 +348,21 @@ openerp.web_fullcalendar = function(instance) {
             }
 
             if (this.info_fields) {
-                res_text = _.reject(_.map(this.info_fields, function(fieldname) {
-                    var value = evt[fieldname];
-                    if (_.contains(["one2many", "many2one", "one2one", "many2many"],
-                                   self.fields[fieldname].type)) {
-                        if (value === false) return null;
-                    }
-                    if(value instanceof Array)
-                        return value[1];
-                    return value;
-                }), function (x) {
-                    return x === null;
-                });
+                res_text = _(this.info_fields)
+                    .chain()
+                    .map(function(fieldname) {
+                        var value = evt[fieldname];
+                        if (_.contains(["one2many", "many2one", "one2one", "many2many"],
+                                       self.fields[fieldname].type)) {
+                            if (value === false) return null;
+                            if (value instanceof Array)
+                                return value[1]; // Yipee, no name_get to make
+                            throw new Error("Incomplete data received from dataset for record " + evt.id);
+                        }
+                        return value;
+                    }).reject(function (x) {
+                        return x === null;
+                    }).value();
             }
             if (!date_stop && date_delay) {
                 date_stop = date_start.clone().addHours(date_delay);
@@ -384,7 +437,10 @@ openerp.web_fullcalendar = function(instance) {
                             console.log("Consecutive ``do_search`` called. Cancelling.");
                             return;
                         }
-                        return callback(events);
+                        // We should make sure that *2many used in title of event have
+                        // their extended form [ID, NAME]...
+
+                        return self.perform_necessary_name_gets(events).then(callback);
                     });
                 },
                 eventDataTransform: function (event) {
