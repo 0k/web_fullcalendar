@@ -14,7 +14,7 @@ openerp.web_fullcalendar = function(instance) {
         return new instance.web.Registry({'tmp' : name}).get_object("tmp");
     }
 
-    var defaultOptions = {
+    var fc_defaultOptions = {
 
         /*
          * Internationalization
@@ -171,7 +171,7 @@ openerp.web_fullcalendar = function(instance) {
 
         get_fc_init_options: function () {
             var self = this;
-            return $.extend({}, defaultOptions, {
+            return $.extend({}, fc_defaultOptions, {
 
                 defaultView: (this.mode == "month")?"month":
                     (this.mode == "week"?"agendaWeek":
