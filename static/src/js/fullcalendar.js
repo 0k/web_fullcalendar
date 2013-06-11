@@ -603,16 +603,16 @@ openerp.web_fullcalendar = function(instance) {
             }
 
             self.$input = this.$el.find('input');
-            self.$input.keyup(function(event){
+            self.$input.keyup(function(event) {
                 if(event.keyCode == 13){
                     self.quick_add();
                 }
             });
-            $(".oe_calendar_quick_create_add", this.$el).click(function () {
+            this.$el.find(".oe_calendar_quick_create_add").click(function () {
                 self.quick_add();
                 self.focus();
             });
-            $(".oe_calendar_quick_create_close", this.$el).click(function (ev) {
+            this.$el.find(".oe_calendar_quick_create_close").click(function (ev) {
                 ev.preventDefault();
                 self.trigger('close');
             });
