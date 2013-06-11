@@ -214,7 +214,7 @@ openerp.web_fullcalendar = function(instance) {
                         return self.quick.trigger('close');
                     }
                     self.quick = new (get_class(self.quick_create_class))(
-                        self, self.dataset, true, data_template)
+                        self, self.dataset, true, self.options, data_template)
                         .on('added', self, self.proxy('quick_created'))
                         .on('close', self, function() {
                             this.quick.destroy();
@@ -577,10 +577,11 @@ openerp.web_fullcalendar = function(instance) {
          * close_btn: If true, the widget will display a "Close" button able to trigger
          * a "close" event.
          */
-        init: function(parent, dataset, buttons, data_template) {
+        init: function(parent, dataset, buttons, options, data_template) {
             this._super(parent);
             this.dataset = dataset;
             this._buttons = buttons || false;
+            this.options = options;
 
             // Can hold data pre-set from where you clicked on agenda
             this.data_template = data_template || {};
@@ -595,6 +596,12 @@ openerp.web_fullcalendar = function(instance) {
         },
         start: function () {
             var self = this;
+
+            if (this.options.disable_quick_create) {
+                self.slow_create();
+                return;
+            }
+
             self.$input = this.$el.find('input');
             self.$input.keyup(function(event){
                 if(event.keyCode == 13){
@@ -654,7 +661,7 @@ openerp.web_fullcalendar = function(instance) {
         slow_create: function(data) {
             var self = this;
             var defaults = {};
-            _.each(data, function(val, field_name) {
+            _.each($.extend({}, this.data_template, data), function(val, field_name) {
                 defaults['default_' + field_name] = val;
             });
 
@@ -881,13 +888,13 @@ openerp.web_fullcalendar = function(instance) {
         load_view: function() {
             var self = this;
             var calendar_view_class = get_class(this.fullcalendar_view_class);
-            this.calendar_view = new calendar_view_class(this, this.dataset, false, {
+            this.calendar_view = new calendar_view_class(this, this.dataset, false, $.extend({
                 'create_text': _t("Add"),
                 'creatable': self.get("effective_readonly") ? false : true,
                 'quick_creatable': self.get("effective_readonly") ? false : true,
                 'read_only_mode': self.get("effective_readonly") ? true : false,
                 'confirm_on_delete': false,
-            });
+            }, this.options));
             var embedded = (this.field.views || {}).calendar;
             if (embedded) {
                 this.calendar_view.set_embedded_view(embedded);
