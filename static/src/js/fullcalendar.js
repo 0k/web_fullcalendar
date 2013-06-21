@@ -666,7 +666,9 @@ openerp.web_fullcalendar = function(instance) {
             });
 
             var pop = new instance.web.form.FormOpenPopup(this);
-            pop.show_element(this.dataset.model, null, defaults, {
+            var context = new instance.web.CompoundContext(this.dataset.context, defaults)
+            pop.show_element(this.dataset.model, null, context
+, {
                 title: this.get_title(),
                 disable_multiple_selection: true,
                 // Ensuring we use ``self.dataset`` and DO NOT create a new one.
