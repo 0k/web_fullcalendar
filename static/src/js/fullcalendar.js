@@ -184,6 +184,7 @@ openerp.web_fullcalendar = function(instance) {
                 selectable: !this.options.read_only_mode && this.create_right,
                 selectHelper: true,
                 editable: !this.options.read_only_mode,
+                droppable: true,
 
                 // callbacks
 
@@ -209,20 +210,20 @@ openerp.web_fullcalendar = function(instance) {
                     });
 
                     // Opening quick create widget
+                    self.open_quick_create(data_template);
 
-                    if (self.quick) {
-                        return self.quick.trigger('close');
-                    }
-                    self.quick = new (get_class(self.quick_create_class))(
-                        self, self.dataset, true, self.options, data_template)
-                        .on('added', self, self.proxy('quick_created'))
-                        .on('close', self, function() {
-                            this.quick.destroy();
-                            delete this.quick;
-                            self.$calendar.fullCalendar('unselect');
-                        });
-                    self.quick.replace($(".oe_calendar_qc_placeholder"));
-                    self.quick.focus();
+                },
+                drop: function(start_date, all_day) {
+                    var data_template = self.get_event_data({
+                        start: start_date,
+                        allDay: all_day,
+                    });
+                    var stored_data = $(this).data('eventDefaults');
+
+                    data_template = $.extend({}, stored_data, data_template);
+
+                    // Opening quick create widget
+                    self.open_quick_create(data_template);
                 },
                 unselectAuto: false,
 
@@ -237,6 +238,23 @@ openerp.web_fullcalendar = function(instance) {
         init_fullcalendar: function() {
             this.$calendar.fullCalendar(this.get_fc_init_options());
             return $.when();
+        },
+
+        open_quick_create: function(data_template) {
+            var self = this;
+            if (this.quick) {
+                return this.quick.trigger('close');
+            }
+            this.quick = new (get_class(this.quick_create_class))(
+                this, this.dataset, true, this.options, data_template)
+                .on('added', this, this.proxy('quick_created'))
+                .on('close', this, function() {
+                    this.quick.destroy();
+                    delete this.quick;
+                    self.$calendar.fullCalendar('unselect');
+                });
+            this.quick.replace($(".oe_calendar_qc_placeholder"));
+            this.quick.focus();
         },
 
         /**
@@ -397,7 +415,7 @@ openerp.web_fullcalendar = function(instance) {
             var event_end = event.end;
             if (event.allDay) {
                 // Sometimes fullcalendar doesn't give any event.end.
-                if (event_end === null)
+                if (event_end === null || typeof evend_end === "undefined")
                     event_end = event.start;
                 // Avoid inplace changes
                 event_end = (new Date(event_end.getTime())).addDays(1);
