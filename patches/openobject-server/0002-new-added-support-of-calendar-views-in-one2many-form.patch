@@ -1,0 +1,26 @@
+From c18c690d011900324bd958e0c4dc78798dcb5d12 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Mon, 1 Jul 2013 14:28:40 +0200
+Subject: [PATCH 2/3] new: added support of ``calendar`` views in ``one2many``
+ form fields.
+
+---
+ openerp/osv/orm.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/openerp/osv/orm.py b/openerp/osv/orm.py
+index ec77a20..0b69271 100644
+--- a/openerp/osv/orm.py
++++ b/openerp/osv/orm.py
+@@ -1769,7 +1769,7 @@ class BaseModel(object):
+                     children = False
+                     views = {}
+                     for f in node:
+-                        if f.tag in ('form', 'tree', 'graph', 'kanban'):
++                        if f.tag in ('form', 'tree', 'graph', 'kanban', 'calendar'):
+                             node.remove(f)
+                             ctx = context.copy()
+                             ctx['base_model_name'] = self._name
+-- 
+1.8.1.2
+

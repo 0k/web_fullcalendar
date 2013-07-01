@@ -1,0 +1,26 @@
+From 818b8b90e1bd8ea95ed3296e05a99edeecefcc24 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Wed, 29 May 2013 09:55:47 +0200
+Subject: [PATCH 1/3] new: use ``priority`` attribute for priorisation of store
+ function.
+
+---
+ openerp/osv/orm.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/openerp/osv/orm.py b/openerp/osv/orm.py
+index f6d4294..ec77a20 100644
+--- a/openerp/osv/orm.py
++++ b/openerp/osv/orm.py
+@@ -995,7 +995,7 @@ class BaseModel(object):
+                 continue
+             sm = f.store
+             if sm is True:
+-                sm = {self._name: (lambda self, cr, uid, ids, c={}: ids, None, 10, None)}
++                sm = {self._name: (lambda self, cr, uid, ids, c={}: ids, None, f.priority, None)}
+             for object, aa in sm.items():
+                 if len(aa) == 4:
+                     (fnct, fields2, order, length) = aa
+-- 
+1.8.1.2
+

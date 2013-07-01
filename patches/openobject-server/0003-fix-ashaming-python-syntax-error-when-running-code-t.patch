@@ -1,0 +1,26 @@
+From f64798e078e6cbf23efd3f2bb1d31ce394364b2c Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Mon, 1 Jul 2013 14:29:14 +0200
+Subject: [PATCH 3/3] fix: ashaming python syntax error when running code to
+ create default calendar view.
+
+---
+ openerp/osv/orm.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/openerp/osv/orm.py b/openerp/osv/orm.py
+index 0b69271..ea24e83 100644
+--- a/openerp/osv/orm.py
++++ b/openerp/osv/orm.py
+@@ -2007,7 +2007,7 @@ class BaseModel(object):
+             return False
+ 
+         view = etree.Element('calendar', string=self._description)
+-        etree.SubElement(view, 'field', self._rec_name_fallback(cr, user, context))
++        etree.SubElement(view, 'field', name=self._rec_name_fallback(cr, user, context))
+ 
+         if self._date_name not in self._columns:
+             date_found = False
+-- 
+1.8.1.2
+

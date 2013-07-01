@@ -1,0 +1,100 @@
+From c88bae220ad40c39e03718f2381b2105bc182f63 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Mon, 27 May 2013 19:47:00 +0200
+Subject: [PATCH 1/3] new: added recurrence_end_date stored function to allow
+ efficient filtering via SQL.
+
+---
+ base_calendar/base_calendar.py | 50 ++++++++++++++++++++++++++----------------
+ 1 file changed, 31 insertions(+), 19 deletions(-)
+
+diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
+index 896349e..68afa33 100644
+--- a/base_calendar/base_calendar.py
++++ b/base_calendar/base_calendar.py
+@@ -48,7 +48,7 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
+     """
+     def todate(date):
+         val = parser.parse(''.join((re.compile('\d')).findall(date)))
+-        return val
++        return pytz.UTC.localize(val)
+ 
+     if not startdate:
+         startdate = datetime.now()
+@@ -1021,6 +1021,31 @@ class calendar_event(osv.osv):
+                 result[event] = ""
+         return result
+ 
++
++    def _get_recurrence_end_date(self, cr, uid, ids, name, arg, context=None):
++        if not context:
++            context = {}
++        events = super(calendar_event, self).read(
++            cr, uid, ids, ['rrule', 'exdate', 'exrule', 'duration', 'date_deadline', 'date'], context=context)
++
++        result = {}
++        for event in events:
++            event_date = datetime.strptime(event['date'], "%Y-%m-%d %H:%M:%S")
++            event_date = pytz.UTC.localize(event_date)
++            exdate = event['exdate'] and event['exdate'].split(',') or []
++
++            duration = timedelta(hours=event['duration'])
++
++            if event['rrule']:
++                all_dates = get_recurrent_dates(
++                    event['rrule'], exdate, event_date, event['exrule'])
++                result[event['id']] = (all_dates[-1] + duration).strftime("%Y-%m-%d %H:%M:%S") \
++                    if all_dates else None
++            else:
++                result[event['id']] = event['date_deadline']
++
++        return result
++
+     def _rrule_write(self, obj, cr, uid, ids, field_name, field_value, args, context=None):
+         data = self._get_empty_rrule_data()
+         if field_value:
+@@ -1070,6 +1095,8 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+         'base_calendar_alarm_id': fields.many2one('calendar.alarm', 'Alarm'),
+         'recurrent_id': fields.integer('Recurrent ID'),
+         'recurrent_id_date': fields.datetime('Recurrent ID date'),
++        'recurrence_end_date': fields.function(_get_recurrence_end_date,
++            type='datetime', store=True, string='Recurrence end date'),
+         'vtimezone': fields.selection(_tz_get, size=64, string='Timezone'),
+         'user_id': fields.many2one('res.users', 'Responsible', states={'done': [('readonly', True)]}),
+         'organizer': fields.char("Organizer", size=256, states={'done': [('readonly', True)]}), # Map with organizer attribute of VEvent.
+@@ -1192,29 +1219,14 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+                 result.append(data['id'])
+                 continue
+             event_date = datetime.strptime(data['date'], "%Y-%m-%d %H:%M:%S")
++            event_date = pytz.UTC.localize(event_date)
+ 
+             # TOCHECK: the start date should be replaced by event date; the event date will be changed by that of calendar code
+ 
+-            if not data['rrule']:
+-                continue
+-
+             exdate = data['exdate'] and data['exdate'].split(',') or []
+-            rrule_str = data['rrule']
+-            new_rrule_str = []
+-            rrule_until_date = False
+-            is_until = False
+-            for rule in rrule_str.split(';'):
+-                name, value = rule.split('=')
+-                if name == "UNTIL":
+-                    is_until = True
+-                    value = parser.parse(value)
+-                    rrule_until_date = parser.parse(value.strftime("%Y-%m-%d %H:%M:%S"))
+-                    value = value.strftime("%Y%m%d%H%M%S")
+-                new_rule = '%s=%s' % (name, value)
+-                new_rrule_str.append(new_rule)
+-            new_rrule_str = ';'.join(new_rrule_str)
+-            rdates = get_recurrent_dates(str(new_rrule_str), exdate, event_date, data['exrule'])
++            rdates = get_recurrent_dates(data['rrule'], exdate, event_date, data['exrule'])
+             for r_date in rdates:
++
+                 ok = True
+                 for arg in domain:
+                     if arg[0] in ('date', 'date_deadline'):
+-- 
+1.8.1.2
+
