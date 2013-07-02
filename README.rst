@@ -8,8 +8,12 @@ the excellent `fullcalendar from Adam Shaw`_.
 .. _fullcalendar from Adam Shaw: http://arshaw.com/fullcalendar/
 
 
-Requirements
+Presentation
 ============
+
+
+Requirements
+------------
 
 This module was tested on OpenERP 7.0.
 
@@ -23,7 +27,7 @@ provided with this source code. All instructions are in the Install_ section.
 
 
 Why
-===
+---
 
 OpenERP 7.0 calendar view has numerous bugs and the result wasn't sexy
 neither. Integrating an existing solution seemed a better idea so that
@@ -31,7 +35,7 @@ the calendar code would be rock-solid, and supported by a large community.
 
 
 Features
-========
+--------
 
 - full day event support
 - external element drop
@@ -40,8 +44,8 @@ Features
 - Read-only mode (can't drag/drop, or create new event on click)
 
 
-State
-=====
+Maturity
+--------
 
 ``web_fullcalendar`` implementation is usable but it is currently missing:
 
