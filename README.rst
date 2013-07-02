@@ -3,7 +3,7 @@ OpenERP fullcalendar module
 ===========================
 
 This module replaces default old DXHTML calendar view from OpenERP 7.0 with
-a the excellent `fullcalendar from Adam Shaw`_.
+the excellent `fullcalendar from Adam Shaw`_.
 
 .. _fullcalendar from Adam Shaw: http://arshaw.com/fullcalendar/
 
@@ -38,6 +38,22 @@ Features
 - provides a full view as replacement of calendar view, and One2Many,
   Many2Many Form field widgets to use in form views.
 - Read-only mode (can't drag/drop, or create new event on click)
+
+
+State
+=====
+
+``web_fullcalendar`` implementation is usable but it is currently missing:
+
+- correct internationalisation support for date format especially
+- event color support (on the way)
+
+There are no tests implemented, and this hurts.
+
+This code is quite fresh, and should be carefully checked and tested
+If you need to use it in production environment. This said, we concider
+that it actually works compared to actual legacy version of calendaring
+in OpenERP.
 
 
 Install
