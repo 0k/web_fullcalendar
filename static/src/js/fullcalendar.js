@@ -679,6 +679,7 @@ openerp.web_fullcalendar = function(instance) {
          */
         slow_create: function(data) {
             var self = this;
+            var def = $.Deferred();
             var defaults = {};
             _.each($.extend({}, this.data_template, data), function(val, field_name) {
                 defaults['default_' + field_name] = val;
@@ -717,14 +718,26 @@ openerp.web_fullcalendar = function(instance) {
                         throw new Error(r);
                     });
                 },
-
-
             });
-            // pop.on('closed', self, function() {
-            // });
+            pop.on('closed', self, function() {
+                // Hum, this is bad trick happening: we must avoid
+                // calling ``self.trigger('close')`` directly because
+                // it would itself destroy all child element including
+                // the slow create popup, which would then re-trigger
+                // recursively the 'closed' signal.  
+                // 
+                // Thus, here, we use a deferred and its state to cut
+                // the endless recurrence.
+                if (def.state() === "pending")
+                    def.resolve();
+            });
             pop.on('create_completed', self, function(id) {
                 self.trigger('added', id);
             });
+            def.then(function() {
+                self.trigger('close');
+            });
+            return def;
         },
     });
 
