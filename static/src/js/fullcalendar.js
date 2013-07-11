@@ -616,7 +616,8 @@ openerp.web_fullcalendar = function(instance) {
             var self = this;
 
             if (this.options.disable_quick_create) {
-                self.slow_create();
+                this.$el.hide();
+                this.slow_create();
                 return;
             }
 
