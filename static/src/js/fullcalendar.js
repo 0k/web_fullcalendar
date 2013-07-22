@@ -292,15 +292,15 @@ openerp.web_fullcalendar = function(instance) {
             });
         },
 
-        // get_color: function(key) {
-        //     if (this.color_map[key]) {
-        //         return this.color_map[key];
-        //     }
-        //     var index = _.keys(this.color_map).length % this.COLOR_PALETTE.length;
-        //     var color = this.COLOR_PALETTE[index];
-        //     this.color_map[key] = color;
-        //     return color;
-        // },
+        get_color: function(key) {
+            if (this.color_map[key]) {
+                return this.color_map[key];
+            }
+            var index = _.keys(this.color_map).length % this.COLOR_PALETTE.length;
+            var color = this.COLOR_PALETTE[index];
+            this.color_map[key] = color;
+            return color;
+        },
 
         /**
          * In o2m case, records from dataset won't have names attached to their *2o values.
@@ -397,11 +397,12 @@ openerp.web_fullcalendar = function(instance) {
                            (this.all_day && evt[this.all_day]) || false),
                 'id': evt.id,
             };
-            if (evt.color) {
-                r.color = evt.color;
-            }
-            if (evt.textColor) {
-                r.textColor = evt.textColor;
+            if (this.color_field && evt[this.color_field]) {
+                var color_key = evt[this.color_field];
+                if (typeof color_key === "object") {
+                    color_key = color_key[0];
+                }
+                r.color = this.get_color(color_key);
             }
             return r;
         },
