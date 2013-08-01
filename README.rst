@@ -110,8 +110,8 @@ Apply the patches to ``openobject-server`` code base::
 
 Apply the patches to ``openobject-addons`` code base::
 
-    cd MY_OPENOBJECT_SERVER_ROOT_PATH
-    cat MY_WEBFULLCALENDAR_SOURCE_PATH/patches/openobject-server/*.patch | patch -p 1
+    cd MY_OPENOBJECT_ADDONS_ROOT_PATH
+    cat MY_WEBFULLCALENDAR_SOURCE_PATH/patches/openobject-addons/*.patch | patch -p 1
 
 
 Usage
