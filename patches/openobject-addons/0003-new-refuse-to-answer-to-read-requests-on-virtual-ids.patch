@@ -1,18 +1,18 @@
-From 30cc21d628b6bacc14eb00f32c5c4499ce275bff Mon Sep 17 00:00:00 2001
+From afbce72c76422a1759e8762b48b54b06abaa4af8 Mon Sep 17 00:00:00 2001
 From: Valentin Lab <valentin.lab@kalysto.org>
 Date: Wed, 29 May 2013 20:21:01 +0200
 Subject: [PATCH 3/3] new: refuse to answer to read requests on virtual ids
  that cannot be generated from the recurrence rule.
 
 ---
- base_calendar/base_calendar.py | 12 +++++++++++-
+ base_calendar/base_calendar.py |   12 +++++++++++-
  1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
-index 7fd3e59..c1430a7 100644
+index a25cbf8..4ba8596 100644
 --- a/base_calendar/base_calendar.py
 +++ b/base_calendar/base_calendar.py
-@@ -1526,7 +1526,8 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1520,7 +1520,8 @@ rule or repeating pattern of time to exclude from the recurring rule."),
              context = {}
          fields2 = fields and fields[:] or None
  
@@ -22,7 +22,7 @@ index 7fd3e59..c1430a7 100644
          for f in EXTRAFIELDS:
              if fields and (f not in fields):
                  fields2.append(f)
-@@ -1549,6 +1550,15 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1543,6 +1544,15 @@ rule or repeating pattern of time to exclude from the recurring rule."),
              res = real_data[real_id].copy()
              ls = base_calendar_id2real_id(base_calendar_id, with_date=res and res.get('duration', 0) or 0)
              if not isinstance(ls, (str, int, long)) and len(ls) >= 2:
@@ -39,5 +39,5 @@ index 7fd3e59..c1430a7 100644
                  res['date_deadline'] = ls[2]
              res['id'] = base_calendar_id
 -- 
-1.8.1.2
+1.7.9.5
 

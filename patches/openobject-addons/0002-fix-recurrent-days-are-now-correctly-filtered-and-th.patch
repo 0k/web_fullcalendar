@@ -1,19 +1,19 @@
-From be23e51d167e46b1ce4d240a41397ee65e8ad9ef Mon Sep 17 00:00:00 2001
+From 938889fec39ae4d460eea7b8e8f41544e79efcd3 Mon Sep 17 00:00:00 2001
 From: Valentin Lab <valentin.lab@kalysto.org>
 Date: Tue, 28 May 2013 19:06:49 +0200
 Subject: [PATCH 2/3] fix: recurrent days are now correctly filtered and thus
  displayed in agenda view.
 
 ---
- base_calendar/base_calendar.py       | 96 +++++++++++++++++++++++++-----------
- base_calendar/base_calendar_view.xml |  2 +-
+ base_calendar/base_calendar.py       |   96 ++++++++++++++++++++++++----------
+ base_calendar/base_calendar_view.xml |    2 +-
  2 files changed, 69 insertions(+), 29 deletions(-)
 
 diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
-index 68afa33..7fd3e59 100644
+index 8abde28..a25cbf8 100644
 --- a/base_calendar/base_calendar.py
 +++ b/base_calendar/base_calendar.py
-@@ -38,17 +38,41 @@ months = {
+@@ -37,17 +37,41 @@ months = {
      10: "October", 11: "November", 12: "December"
  }
  
@@ -62,7 +62,7 @@ index 68afa33..7fd3e59 100644
  
      if not startdate:
          startdate = datetime.now()
-@@ -56,6 +80,9 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
+@@ -55,6 +79,9 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
      if not exdate:
          exdate = []
  
@@ -72,7 +72,7 @@ index 68afa33..7fd3e59 100644
      rset1 = rrule.rrulestr(str(rrulestring), dtstart=startdate, forceset=True)
      for date in exdate:
          datetime_obj = todate(date)
-@@ -64,7 +91,9 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
+@@ -63,7 +90,9 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
      if exrule:
          rset1.exrule(rrule.rrulestr(str(exrule), dtstart=startdate))
  
@@ -83,7 +83,7 @@ index 68afa33..7fd3e59 100644
  
  def base_calendar_id2real_id(base_calendar_id=None, with_date=False):
      """
-@@ -856,10 +885,7 @@ class calendar_alarm(osv.osv):
+@@ -847,10 +876,7 @@ class calendar_alarm(osv.osv):
              re_dates = []
  
              if hasattr(res_obj, 'rrule') and res_obj.rrule:
@@ -95,7 +95,7 @@ index 68afa33..7fd3e59 100644
  
                  trigger_interval = alarm.trigger_interval
                  if trigger_interval == 'days':
-@@ -1023,23 +1049,39 @@ class calendar_event(osv.osv):
+@@ -1015,23 +1041,39 @@ class calendar_event(osv.osv):
  
  
      def _get_recurrence_end_date(self, cr, uid, ids, name, arg, context=None):
@@ -141,7 +141,7 @@ index 68afa33..7fd3e59 100644
                      if all_dates else None
              else:
                  result[event['id']] = event['date_deadline']
-@@ -1096,7 +1138,9 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1088,7 +1130,9 @@ rule or repeating pattern of time to exclude from the recurring rule."),
          'recurrent_id': fields.integer('Recurrent ID'),
          'recurrent_id_date': fields.datetime('Recurrent ID date'),
          'recurrence_end_date': fields.function(_get_recurrence_end_date,
@@ -152,13 +152,13 @@ index 68afa33..7fd3e59 100644
          'vtimezone': fields.selection(_tz_get, size=64, string='Timezone'),
          'user_id': fields.many2one('res.users', 'Responsible', states={'done': [('readonly', True)]}),
          'organizer': fields.char("Organizer", size=256, states={'done': [('readonly', True)]}), # Map with organizer attribute of VEvent.
-@@ -1214,17 +1258,13 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1208,17 +1252,13 @@ rule or repeating pattern of time to exclude from the recurring rule."),
              context = {}
  
          result = []
--        for data in super(calendar_event, self).read(cr, uid, select, ['rrule', 'exdate', 'exrule', 'date'], context=context):
-+        for data in super(calendar_event, self).read(cr, uid, select, ['rrule', 'exdate', 'exrule', 'date', 'vtimezone'], context=context):
-             if not data['rrule']:
+-        for data in super(calendar_event, self).read(cr, uid, select, ['rrule', 'recurrency', 'exdate', 'exrule', 'date'], context=context):
++        for data in super(calendar_event, self).read(cr, uid, select, ['rrule', 'recurrency', 'exdate', 'exrule', 'date', 'vtimezone'], context=context):
+             if not data['recurrency'] or not data['rrule']:
                  result.append(data['id'])
                  continue
 -            event_date = datetime.strptime(data['date'], "%Y-%m-%d %H:%M:%S")
@@ -172,7 +172,7 @@ index 68afa33..7fd3e59 100644
              for r_date in rdates:
  
                  ok = True
-@@ -1367,7 +1407,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1361,7 +1401,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
              new_arg = arg
              if arg[0] in ('date', unicode('date'), 'date_deadline', unicode('date_deadline')):
                  if context.get('virtual_id', True):
@@ -181,7 +181,7 @@ index 68afa33..7fd3e59 100644
              elif arg[0] == "id":
                  new_id = get_real_ids(arg[2])
                  new_arg = (arg[0], arg[1], new_id)
-@@ -1443,7 +1483,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1437,7 +1477,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
                  new_id = self.copy(cr, uid, real_event_id, default=data, context=context)
  
                  date_new = event_id.split('-')[1]
@@ -190,7 +190,7 @@ index 68afa33..7fd3e59 100644
                               time.strptime(date_new, "%Y%m%d%H%M%S"))
                  exdate = (data['exdate'] and (data['exdate'] + ',')  or '') + date_new
                  res = self.write(cr, uid, [real_event_id], {'exdate': exdate})
-@@ -1562,7 +1602,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1556,7 +1596,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
              date_new = time.strftime("%Y%m%dT%H%M%S", \
                           time.strptime(date_new, "%Y%m%d%H%M%S"))
              exdate = (data['exdate'] and (data['exdate'] + ',')  or '') + date_new
@@ -213,5 +213,5 @@ index 92ffad4..fbbb8fb 100644
                      <field name="class"/>
                      <field name="show_as"/>
 -- 
-1.8.1.2
+1.7.9.5
 

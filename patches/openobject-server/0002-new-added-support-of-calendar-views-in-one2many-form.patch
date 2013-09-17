@@ -1,18 +1,18 @@
-From c18c690d011900324bd958e0c4dc78798dcb5d12 Mon Sep 17 00:00:00 2001
+From 1a8dd06094ad550854e8437cdf23bad015333fcf Mon Sep 17 00:00:00 2001
 From: Valentin Lab <valentin.lab@kalysto.org>
 Date: Mon, 1 Jul 2013 14:28:40 +0200
-Subject: [PATCH 2/3] new: added support of ``calendar`` views in ``one2many``
+Subject: [PATCH 2/4] new: added support of ``calendar`` views in ``one2many``
  form fields.
 
 ---
- openerp/osv/orm.py | 2 +-
+ openerp/osv/orm.py |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/openerp/osv/orm.py b/openerp/osv/orm.py
-index ec77a20..0b69271 100644
+index 4a6a60d..9baf58b 100644
 --- a/openerp/osv/orm.py
 +++ b/openerp/osv/orm.py
-@@ -1769,7 +1769,7 @@ class BaseModel(object):
+@@ -1771,7 +1771,7 @@ class BaseModel(object):
                      children = False
                      views = {}
                      for f in node:
@@ -22,5 +22,5 @@ index ec77a20..0b69271 100644
                              ctx = context.copy()
                              ctx['base_model_name'] = self._name
 -- 
-1.8.1.2
+1.7.9.5
 
