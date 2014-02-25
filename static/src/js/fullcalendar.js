@@ -14,40 +14,44 @@ openerp.web_fullcalendar = function(instance) {
         return new instance.web.Registry({'tmp' : name}).get_object("tmp");
     }
 
-    var fc_defaultOptions = {
+    function get_fc_default_options() {
+        var fc_defaultOptions = {
 
-        /*
-         * Internationalization
-         */
+            /*
+             * Internationalization
+             */
 
-        // Dates
+            // Dates
 
-        monthNames: Date.CultureInfo.monthNames,
-        monthNamesShort: Date.CultureInfo.abbreviatedMonthNames,
-        dayNames: Date.CultureInfo.dayNames,
-        dayNamesShort: Date.CultureInfo.abbreviatedDayNames,
+            monthNames: Date.CultureInfo.monthNames,
+            monthNamesShort: Date.CultureInfo.abbreviatedMonthNames,
+            dayNames: Date.CultureInfo.dayNames,
+            dayNamesShort: Date.CultureInfo.abbreviatedDayNames,
 
-        // Label
+            // Label
 
-        weekNumberTitle: _t("W"),
-        allDayText: _t("all-day"),
+            weekNumberTitle: _t("W"),
+            allDayText: _t("all-day"),
 
-        // Functional
+            // Functional
 
-        firstDay: Date.CultureInfo.firstDayOfWeek,
+            firstDay: Date.CultureInfo.firstDayOfWeek,
 
-        /* XXXvlab: propose a patch to formatDate
-           https://github.com/arshaw/fullcalendar/blob/0c20380d6967e6669633918c16047bc23eae50f2/src/date_util.js
-           So as to allow overriding of formatDate function only (and not formatDates), and
-           use datejs formatting codes.
-        */
-        // columnFormat: {
-        //     month: ,
-        //     week: ,
-        //     day: ,
-        // }
+            /* XXXvlab: propose a patch to formatDate
+               https://github.com/arshaw/fullcalendar/blob/0c20380d6967e6669633918c16047bc23eae50f2/src/date_util.js
+               So as to allow overriding of formatDate function only (and not formatDates), and
+               use datejs formatting codes.
+            */
+            // columnFormat: {
+            //     month: 'ddd',
+            //     week: 'ddd d/M',
+            //     day: 'dddd d/M',
+            // }
 
-    };
+        };
+
+        return fc_defaultOptions;
+    }
 
     function is_virtual_id(id) {
         return typeof id == "string" && id.indexOf('-') >= 0;
@@ -171,7 +175,7 @@ openerp.web_fullcalendar = function(instance) {
 
         get_fc_init_options: function () {
             var self = this;
-            return $.extend({}, fc_defaultOptions, {
+            return $.extend({}, get_fc_default_options(), {
 
                 defaultView: (this.mode == "month")?"month":
                     (this.mode == "week"?"agendaWeek":
@@ -725,8 +729,8 @@ openerp.web_fullcalendar = function(instance) {
                 // calling ``self.trigger('close')`` directly because
                 // it would itself destroy all child element including
                 // the slow create popup, which would then re-trigger
-                // recursively the 'closed' signal.  
-                // 
+                // recursively the 'closed' signal.
+                //
                 // Thus, here, we use a deferred and its state to cut
                 // the endless recurrence.
                 if (def.state() === "pending")
