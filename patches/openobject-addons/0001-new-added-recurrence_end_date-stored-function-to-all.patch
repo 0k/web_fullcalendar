@@ -1,18 +1,18 @@
-From 3460db42ded0c62258e05eebc8f74d8fa511098d Mon Sep 17 00:00:00 2001
+From 45728e6c69207d312e5a516b4d3d8500ffac9a1a Mon Sep 17 00:00:00 2001
 From: Valentin Lab <valentin.lab@kalysto.org>
 Date: Mon, 27 May 2013 19:47:00 +0200
-Subject: [PATCH 1/3] new: added recurrence_end_date stored function to allow
+Subject: [PATCH 1/7] new: added recurrence_end_date stored function to allow
  efficient filtering via SQL.
 
 ---
- base_calendar/base_calendar.py |   50 +++++++++++++++++++++++++---------------
- 1 file changed, 31 insertions(+), 19 deletions(-)
+ base_calendar/base_calendar.py | 49 ++++++++++++++++++++++++++----------------
+ 1 file changed, 31 insertions(+), 18 deletions(-)
 
 diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
-index 1eac1f3..8abde28 100644
+index 0f7ef0c..2ec2e19 100644
 --- a/base_calendar/base_calendar.py
 +++ b/base_calendar/base_calendar.py
-@@ -47,7 +47,7 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
+@@ -49,7 +49,7 @@ def get_recurrent_dates(rrulestring, exdate, startdate=None, exrule=None):
      """
      def todate(date):
          val = parser.parse(''.join((re.compile('\d')).findall(date)))
@@ -21,11 +21,10 @@ index 1eac1f3..8abde28 100644
  
      if not startdate:
          startdate = datetime.now()
-@@ -1013,6 +1013,31 @@ class calendar_event(osv.osv):
-                 result[event] = ""
-         return result
+@@ -1019,6 +1019,30 @@ class calendar_event(osv.osv):
+     def _set_rulestring(self, cr, uid, ids, field_name, field_value, args, context=None):
+         return self._rrule_write(self, cr, uid, ids, field_name, field_value, args, context=context)
  
-+
 +    def _get_recurrence_end_date(self, cr, uid, ids, name, arg, context=None):
 +        if not context:
 +            context = {}
@@ -51,9 +50,9 @@ index 1eac1f3..8abde28 100644
 +        return result
 +
      def _rrule_write(self, obj, cr, uid, ids, field_name, field_value, args, context=None):
-         data = self._get_empty_rrule_data()
-         if field_value:
-@@ -1062,6 +1087,8 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+         if not isinstance(ids, list):
+             ids = [ids]
+@@ -1069,6 +1093,8 @@ rule or repeating pattern of time to exclude from the recurring rule."),
          'base_calendar_alarm_id': fields.many2one('calendar.alarm', 'Alarm'),
          'recurrent_id': fields.integer('Recurrent ID'),
          'recurrent_id_date': fields.datetime('Recurrent ID date'),
@@ -62,7 +61,7 @@ index 1eac1f3..8abde28 100644
          'vtimezone': fields.selection(_tz_get, size=64, string='Timezone'),
          'user_id': fields.many2one('res.users', 'Responsible', states={'done': [('readonly', True)]}),
          'organizer': fields.char("Organizer", size=256, states={'done': [('readonly', True)]}), # Map with organizer attribute of VEvent.
-@@ -1186,29 +1213,14 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+@@ -1212,25 +1238,12 @@ rule or repeating pattern of time to exclude from the recurring rule."),
                  result.append(data['id'])
                  continue
              event_date = datetime.strptime(data['date'], "%Y-%m-%d %H:%M:%S")
@@ -70,9 +69,6 @@ index 1eac1f3..8abde28 100644
  
              # TOCHECK: the start date should be replaced by event date; the event date will be changed by that of calendar code
  
--            if not data['rrule']:
--                continue
--
              exdate = data['exdate'] and data['exdate'].split(',') or []
 -            rrule_str = data['rrule']
 -            new_rrule_str = []
@@ -91,10 +87,26 @@ index 1eac1f3..8abde28 100644
 -            rdates = get_recurrent_dates(str(new_rrule_str), exdate, event_date, data['exrule'])
 +            rdates = get_recurrent_dates(data['rrule'], exdate, event_date, data['exrule'])
              for r_date in rdates:
-+
-                 ok = True
-                 for arg in domain:
-                     if arg[0] in ('date', 'date_deadline'):
+                 # fix domain evaluation
+                 # step 1: check date and replace expression by True or False, replace other expressions by True
+@@ -1292,7 +1305,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+                 return 0
+ 
+             sort_params = [key.split()[0] if key[-4:].lower() != 'desc' else '-%s' % key.split()[0] for key in (order or self._order).split(',')]
+-            comparers = [ ((itemgetter(col[1:]), -1) if col[0] == '-' else (itemgetter(col), 1)) for col in sort_params]    
++            comparers = [ ((itemgetter(col[1:]), -1) if col[0] == '-' else (itemgetter(col), 1)) for col in sort_params]
+             ids = [r['id'] for r in sorted(result_data, cmp=comparer)]
+             
+         return ids
+@@ -1423,7 +1436,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+ 
+         # offset, limit, order and count must be treated separately as we may need to deal with virtual ids
+         res = super(calendar_event, self).search(cr, uid, new_args, offset=0, limit=0, order=None, context=context, count=False)
+-        res = self._get_recurrent_ids(cr, uid, res, args, limit, order=order, context=context)            
++        res = self._get_recurrent_ids(cr, uid, res, args, limit, order=order, context=context)
+ 
+         if count:
+             return len(res)
 -- 
-1.7.9.5
+1.9.2
 

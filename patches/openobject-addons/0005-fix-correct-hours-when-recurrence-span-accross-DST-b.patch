@@ -1,0 +1,89 @@
+From ddcdaa3953d50a8f636a4adb1d1ee95cae96b88d Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Wed, 23 Apr 2014 16:23:04 +0200
+Subject: [PATCH 5/7] fix: correct hours when recurrence span accross DST
+ boundaries.
+
+---
+ base_calendar/base_calendar.py | 52 ++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 47 insertions(+), 5 deletions(-)
+
+diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
+index 38f036d..c092eb5 100644
+--- a/base_calendar/base_calendar.py
++++ b/base_calendar/base_calendar.py
+@@ -31,8 +31,12 @@ import pytz
+ import re
+ import time
+ from operator import itemgetter
++import logging
+ from openerp import tools, SUPERUSER_ID
+ 
++_logger = logging.getLogger(__name__)
++
++
+ months = {
+     1: "January", 2: "February", 3: "March", 4: "April", \
+     5: "May", 6: "June", 7: "July", 8: "August", 9: "September", \
+@@ -85,15 +89,53 @@ def get_recurrent_dates(rrulestring, startdate, exdate=None, tz=None, exrule=Non
+     ## define the correct hour/day asked by the user to repeat for recurrence.
+     startdate = startdate.astimezone(timezone)
+     rset1 = rrule.rrulestr(str(rrulestring), dtstart=startdate, forceset=True)
+-    for date in exdate:
+-        datetime_obj = todate(date)
+-        rset1._exdate.append(datetime_obj)
+ 
+     if exrule:
+         rset1.exrule(rrule.rrulestr(str(exrule), dtstart=startdate))
+ 
+-    return [d.astimezone(pytz.UTC) for d in rset1]
+-
++    ## Convert exdates strings to datetime in saved timezone
++    exdate = sorted([todate(d) for d in exdate], reverse=True)
++
++    ## All dates produced by rrule will not follow DST and will all have the
++    ## fixed timezone from startdate.
++    ##   see: https://bugs.launchpad.net/dateutil/+bug/890196
++
++    ## Thus, we must relocalize all these dates so they will get correct DST
++    rset1 = [timezone.localize(d.replace(tzinfo=None)).astimezone(pytz.UTC)
++             for d in rset1]
++
++    ## We have to take care ourselves of the exclusion dates. Note that the
++    ## following is equivalent to calculate:
++    #
++    # result = [d for d in rset1 if d not in exdate]
++    #
++    ## But it's much faster.
++
++    result = []
++    exdate_idx = len(exdate) - 1  ## index in exdate
++    idx = 0                       ## index in rset1
++    len_rset1 = len(rset1)
++    while idx < len_rset1:
++        date = rset1[idx]
++        if exdate_idx < 0:
++            result.extend(rset1[idx:])
++            break
++        elif date < exdate[exdate_idx]:
++            result.append(date)
++        elif date == exdate[exdate_idx]:
++            ## avoid this date.
++            exdate_idx -= 1
++        else:  ## date > exdate[exdate_idx]
++            while exdate_idx >= 0 and date > exdate[exdate_idx]:
++                _logger.warn(
++                    "An incorrect exclusion date (%s) was stored for "
++                    "recurrence %s starting at %s."
++                    % (exdate[exdate_idx].isoformat(" "),
++                       rrulestring, startdate.isoformat(" ")))
++                exdate_idx -= 1
++            continue
++        idx += 1
++    return result
+ 
+ 
+ def base_calendar_id2real_id(base_calendar_id=None, with_date=False):
+-- 
+1.9.2
+

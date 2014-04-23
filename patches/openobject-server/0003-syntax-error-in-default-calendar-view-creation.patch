@@ -1,0 +1,25 @@
+From 4657b0bb2d7c208a363b39bede078b5c17c28d14 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Fri, 14 Jun 2013 17:58:14 +0200
+Subject: [PATCH 3/4] syntax error in default calendar view creation.
+
+---
+ openerp/osv/orm.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/openerp/osv/orm.py b/openerp/osv/orm.py
+index 5b673c5..b75a142 100644
+--- a/openerp/osv/orm.py
++++ b/openerp/osv/orm.py
+@@ -2025,7 +2025,7 @@ class BaseModel(object):
+             return False
+ 
+         view = etree.Element('calendar', string=self._description)
+-        etree.SubElement(view, 'field', self._rec_name_fallback(cr, user, context))
++        etree.SubElement(view, 'field', name=self._rec_name_fallback(cr, user, context))
+ 
+         if self._date_name not in self._columns:
+             date_found = False
+-- 
+1.9.2
+

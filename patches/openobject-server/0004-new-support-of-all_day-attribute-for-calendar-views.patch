@@ -1,12 +1,11 @@
-From 30da15baf4e6b9df506dffab59b55b8abf37f967 Mon Sep 17 00:00:00 2001
+From af6b8d001df9f768482d43e975e7b8146a743d4d Mon Sep 17 00:00:00 2001
 From: Valentin Lab <valentin.lab@kalysto.org>
 Date: Sun, 12 May 2013 10:41:25 +0200
-Subject: [PATCH 4/4] new: support of ``all_day`` attribute for calendar
- views.
+Subject: [PATCH 4/4] new: support of ``all_day`` attribute for calendar views.
 
 ---
- openerp/addons/base/rng/view.rng |    1 +
- openerp/osv/orm.py               |    2 +-
+ openerp/addons/base/rng/view.rng | 1 +
+ openerp/osv/orm.py               | 2 +-
  2 files changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/openerp/addons/base/rng/view.rng b/openerp/addons/base/rng/view.rng
@@ -22,10 +21,10 @@ index dfeeb03..b8be647 100644
              <rng:optional><rng:attribute name="mode" /></rng:optional>
              <rng:oneOrMore>
 diff --git a/openerp/osv/orm.py b/openerp/osv/orm.py
-index ee9734c..499d469 100644
+index b75a142..b63eb1a 100644
 --- a/openerp/osv/orm.py
 +++ b/openerp/osv/orm.py
-@@ -1815,7 +1815,7 @@ class BaseModel(object):
+@@ -1831,7 +1831,7 @@ class BaseModel(object):
              in_tree_view = node.tag == 'tree'
  
          elif node.tag == 'calendar':
@@ -35,5 +34,5 @@ index ee9734c..499d469 100644
                      fields[node.get(additional_field)] = {}
  
 -- 
-1.7.9.5
+1.9.2
 

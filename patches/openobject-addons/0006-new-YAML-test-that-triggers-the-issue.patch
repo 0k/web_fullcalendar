@@ -1,0 +1,222 @@
+From 7eb985792d9b65322b931446a4880dac864eed38 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Wed, 23 Apr 2014 16:28:54 +0200
+Subject: [PATCH 6/7] new: YAML test that triggers the issue.
+
+---
+ base_calendar/__openerp__.py                    |   5 +-
+ base_calendar/test/test_calendar_recurrence.yml | 186 ++++++++++++++++++++++++
+ 2 files changed, 190 insertions(+), 1 deletion(-)
+ create mode 100644 base_calendar/test/test_calendar_recurrence.yml
+
+diff --git a/base_calendar/__openerp__.py b/base_calendar/__openerp__.py
+index 313ddb8..16ff2a5 100644
+--- a/base_calendar/__openerp__.py
++++ b/base_calendar/__openerp__.py
+@@ -47,7 +47,10 @@ If you need to manage your meetings, you should install the CRM module.
+         'base_calendar_data.xml',
+         'crm_meeting_data.xml',
+     ],
+-    'test' : ['test/base_calendar_test.yml'],
++    'test' : [
++        'test/base_calendar_test.yml',
++        'test/test_calendar_recurrence.yml',
++        ],
+     'installable': True,
+     'application': True,
+     'auto_install': False,
+diff --git a/base_calendar/test/test_calendar_recurrence.yml b/base_calendar/test/test_calendar_recurrence.yml
+new file mode 100644
+index 0000000..52e6c88
+--- /dev/null
++++ b/base_calendar/test/test_calendar_recurrence.yml
+@@ -0,0 +1,186 @@
++-
++  In order to test recurrence corner cases around DST changes and move and deletion,
++-
++  I'm in default simple UTC timezone
++-
++  !context
++    tz: None
++-
++  I create a recurrent meeting with daily recurrency and fixed amount of time but with default timezone
++-
++  !record {model: calendar.event, id: calendar_event_dsttest0}:
++    count: 5
++    date: '2014-03-27 08:00:00'
++    day: 0.0
++    duration: 1.0
++    name: My Daily Appointment
++    recurrency: true
++    recurrent_id: 0.0
++    rrule_type: daily
++-
++  I search for all the recurrent meetings.
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid, [('name', '=', 'My Daily Appointment')], context={'virtual_id': True})
++     assert len(ids) == 5, 'Recurrent daily meetings are not created !'
++-
++  I check if generated dates are correct
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid,
++         [('name', '=', 'My Daily Appointment')],
++         context={'virtual_id': True})
++     meetings = self.read(cr, uid, ids,
++         fields=["date"],
++         context={'virtual_id': True})
++     assert sorted([m["date"] for m in meetings]) == \
++        ['2014-03-27 08:00:00',
++         '2014-03-28 08:00:00',
++         '2014-03-29 08:00:00',
++         '2014-03-30 08:00:00',
++         '2014-03-31 08:00:00'], 'Recurrent daily meetings are not correct !'
++-
++  I delete the second day appointment
++-
++  !python {model: calendar.event}: |
++     idval = '%d-%s' % (ref('calendar_event_dsttest0'), '20140328080000')
++     self.unlink(cr, uid, [idval])
++-
++  I search for all the recurrent meetings.
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid, [('name', '=', 'My Daily Appointment')], context={'virtual_id': True})
++     assert len(ids) == 4, 'Recurrent daily meetings are not created !'
++-
++  I check if dates are correct
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid,
++         [('name', '=', 'My Daily Appointment')],
++         context={'virtual_id': True})
++     meetings = self.read(cr, uid, ids,
++         fields=["date"],
++         context={'virtual_id': True})
++     assert sorted([m["date"] for m in meetings]) == \
++        ['2014-03-27 08:00:00',
++         '2014-03-29 08:00:00',
++         '2014-03-30 08:00:00',
++         '2014-03-31 08:00:00'], 'Recurrent daily meetings are not correct !'
++-
++  I move the fourth day to the afternoon
++-
++  !python {model: calendar.event}: |
++     idval = '%d-%s' % (ref('calendar_event_dsttest0'), '20140330080000')
++     self.write(cr, uid, [idval], {"date": '2014-03-30 14:00:00', "date_deadline": '2014-03-30 15:00:00'})
++-
++  I check if dates are correct
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid,
++         [('name', '=', 'My Daily Appointment')],
++         context={'virtual_id': True})
++     meetings = self.read(cr, uid, ids,
++         fields=["date"],
++         context={'virtual_id': True})
++     assert sorted([m["date"] for m in meetings]) == \
++        ['2014-03-27 08:00:00',
++         '2014-03-29 08:00:00',
++         '2014-03-30 14:00:00',
++         '2014-03-31 08:00:00'], 'Recurrent daily meetings are not created !'
++
++
++-
++  I'm now in 'Europe/Paris' timezone that sports DST transition the 2014-03-30
++-
++  !context
++    tz: 'Europe/Paris'
++-
++  I create a recurrent meeting with daily recurrency and fixed amount of time but with default timezone
++-
++  !record {model: calendar.event, id: calendar_event_dsttest1}:
++    count: 5
++    date: '2014-03-27 08:00:00'
++    day: 0.0
++    duration: 1.0
++    name: My Daily DST Appointment
++    recurrency: true
++    recurrent_id: 0.0
++    rrule_type: daily
++-
++  I search for the generated meetings from the recurrence over the DST transition.
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid, [('name', '=', 'My Daily DST Appointment')], context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     assert len(ids) == 5, 'Recurrent daily meetings are not created !'
++-
++  I check if dates are correct (following the actual DST transition)
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid,
++         [('name', '=', 'My Daily DST Appointment')],
++         context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     meetings = self.read(cr, uid, ids,
++         fields=["date"],
++         context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     # from pprint import pprint
++     # pprint(sorted([m["date"] for m in meetings]))
++     assert sorted([m["date"] for m in meetings]) == \
++        ['2014-03-27 08:00:00',
++         '2014-03-28 08:00:00',
++         '2014-03-29 08:00:00',
++         '2014-03-30 07:00:00',
++         '2014-03-31 07:00:00'], 'Recurrent DST daily meetings are not correct !'
++-
++  I delete the second day appointment
++-
++  !python {model: calendar.event}: |
++     idval = '%d-%s' % (ref('calendar_event_dsttest1'), '20140328080000')
++     self.unlink(cr, uid, [idval])
++-
++  I search for all the recurrent meetings.
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid, [('name', '=', 'My Daily DST Appointment')], context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     assert len(ids) == 4, 'Recurrent daily meetings are not created !'
++-
++  I check if dates are correct
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid,
++         [('name', '=', 'My Daily DST Appointment')],
++         context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     meetings = self.read(cr, uid, ids,
++         fields=["date"],
++         context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     # from pprint import pprint
++     # pprint(sorted([m["date"] for m in meetings]))
++     assert sorted([m["date"] for m in meetings]) == \
++        ['2014-03-27 08:00:00',
++         '2014-03-29 08:00:00',
++         '2014-03-30 07:00:00',
++         '2014-03-31 07:00:00'], 'Recurrent daily meetings are not correct !'
++-
++  I move the fourth day to the afternoon
++-
++  !python {model: calendar.event}: |
++     idval = '%d-%s' % (ref('calendar_event_dsttest1'), '20140330070000')
++     self.write(cr, uid, [idval],
++         {"date": '2014-03-30 14:00:00', "date_deadline": '2014-03-30 15:00:00'},
++         context={'tz': 'Europe/Paris'})
++-
++  I check if dates are correct
++-
++  !python {model: calendar.event}: |
++     ids = self.search(cr, uid,
++         [('name', '=', 'My Daily DST Appointment')],
++         context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     meetings = self.read(cr, uid, ids,
++         fields=["date"],
++         context={'virtual_id': True, 'tz': 'Europe/Paris'})
++     # from pprint import pprint
++     # pprint(sorted([m["date"] for m in meetings]))
++     assert sorted([m["date"] for m in meetings]) == \
++        ['2014-03-27 08:00:00',
++         '2014-03-29 08:00:00',
++         '2014-03-30 14:00:00',
++         '2014-03-31 07:00:00'], 'Recurrent daily meetings are not correct !'
+-- 
+1.9.2
+

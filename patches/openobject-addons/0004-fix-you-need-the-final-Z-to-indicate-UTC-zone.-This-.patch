@@ -1,0 +1,26 @@
+From 80da2a6766f36b77133f713ce5b77239eeeab574 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Wed, 23 Apr 2014 16:07:49 +0200
+Subject: [PATCH 4/7] fix: you need the final 'Z' to indicate UTC zone. This
+ will be used by dateutil when generating dates.
+
+---
+ base_calendar/base_calendar.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
+index 2ec2ae0..38f036d 100644
+--- a/base_calendar/base_calendar.py
++++ b/base_calendar/base_calendar.py
+@@ -1381,7 +1381,7 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+                 data['end_date_new'] = ''.join((re.compile('\d')).findall(data.get('end_date'))) + 'T235959'
+ 
+             return (data.get('end_type') == 'count' and (';COUNT=' + str(data.get('count'))) or '') +\
+-                             ((data.get('end_date_new') and data.get('end_type') == 'end_date' and (';UNTIL=' + data.get('end_date_new'))) or '')
++                             ((data.get('end_date_new') and data.get('end_type') == 'end_date' and (';UNTIL=%sZ' % data.get('end_date_new'))) or '')
+ 
+         freq = data.get('rrule_type', False)
+         res = ''
+-- 
+1.9.2
+

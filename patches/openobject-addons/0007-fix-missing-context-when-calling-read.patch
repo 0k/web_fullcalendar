@@ -1,0 +1,26 @@
+From 3bd5116cf4f6400a800326aea64aff2e0226ba49 Mon Sep 17 00:00:00 2001
+From: Valentin Lab <valentin.lab@kalysto.org>
+Date: Wed, 23 Apr 2014 17:00:58 +0200
+Subject: [PATCH 7/7] fix: missing context when calling read.
+
+---
+ base_calendar/base_calendar.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/base_calendar/base_calendar.py b/base_calendar/base_calendar.py
+index c092eb5..f3043ab 100644
+--- a/base_calendar/base_calendar.py
++++ b/base_calendar/base_calendar.py
+@@ -1570,7 +1570,8 @@ rule or repeating pattern of time to exclude from the recurring rule."),
+ 
+             #if edit one instance of a reccurrent id
+             data = self.read(cr, uid, event_id, ['date', 'date_deadline', \
+-                                                'rrule', 'duration', 'exdate'])
++                                                'rrule', 'duration', 'exdate'],
++                             context=context)
+             if data.get('rrule'):
+                 data.update(
+                     vals,
+-- 
+1.9.2
+
