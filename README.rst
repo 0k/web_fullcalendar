@@ -7,6 +7,8 @@ the excellent `fullcalendar from Adam Shaw`_.
 
 .. _fullcalendar from Adam Shaw: http://arshaw.com/fullcalendar/
 
+**This module code is now fully integrated in next version of OpenERP (> 7.0)**
+
 
 Presentation
 ============
